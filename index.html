@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="hu">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grind Napló</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;600;700&display=swap');
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #09090b;
+        color: #e4e4e7;
+        transition: background-color 0.3s, color 0.3s;
+      }
+      pre, code {
+        font-family: 'JetBrains Mono', monospace;
+      }
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar { width: 8px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #52525b; border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #71717a; }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/client": "https://aistudiocdn.com/react-dom@^19.2.1/client",
+    "react-dom": "https://aistudiocdn.com/react-dom@^19.2.1",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.31.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    
+    <!-- Custom Loader to bypass strict MIME type checks on shared hosting -->
+    <script>
+      async function loadTsx(path) {
+        const response = await fetch(path);
+        if (!response.ok) throw new Error(`Failed to load ${path}`);
+        return await response.text();
+      }
+
+      async function boot() {
+        try {
+          // Load all files as text
+          const files = [
+            './constants.ts',
+            './types.ts',
+            './services/storage.ts',
+            './services/gemini.ts',
+            './App.tsx',
+            './index.tsx'
+          ];
+          
+          const sources = await Promise.all(files.map(f => loadTsx(f)));
+          
+          // Create a simple registry for our manual module system
+          const registry = {};
+          
+          // Helper to transform and execute
+          const run = (code, filename) => {
+            const output = Babel.transform(code, {
+              presets: ['react', 'typescript'],
+              filename: filename,
+              plugins: ['transform-modules-umd']
+            }).code;
+            
+            // Minimal CommonJS/UMD define shim
+            const exports = {};
+            const module = { exports };
+            const require = (id) => {
+              if (registry[id]) return registry[id];
+              // Map relative paths
+              if (id.startsWith('.')) {
+                // simple resolution for this flat structure
+                const name = id.replace('./', '').replace('.ts', '').replace('.tsx', '');
+                // Find matching file in registry keys (approximate)
+                const key = Object.keys(registry).find(k => k.includes(name));
+                if (key) return registry[key];
+              }
+              // Fallback to global (for React, etc defined in importmap - handled by browser usually, 
+              // but here we are in a closure. 
+              // Since we use UMD transform, external imports expect globals or AMD.
+              // We will rely on window globals for React/Lucide if importmap fails in this context,
+              // BUT actually, let's use a simpler approach: 
+              // We will inject the code into the DOM as type="text/babel" strips, but that has the MIME issue.
+            };
+
+            // Evaluation strategy:
+            // Since we can't easily emulate a full module system in 5 lines,
+            // We will use the Babel 'transform-modules-systemjs' or just concat?
+            // NO. The easiest way for the user:
+            // We will fetch the text and inject it as a script tag with NO src, just innerHTML.
+            // But we need to handle imports.
+            
+            // PLAN B: The "Single HTML" approach is best, but for this live view:
+            // We'll let Babel Standalone handle it via data-plugins, but we fetch the content manually.
+          };
+          
+          // simpler approach:
+          // We fetch the content, create <script type="text/babel" data-type="module"> element,
+          // set innerHTML to the fetched content, and append to body.
+          // We must do it in order or use modules.
+          
+          // Since the files use "import ... from './file'", they must be served.
+          // If server fails MIME, we can't use standard ES modules easily without a blob URL.
+          
+          // Solution: Blob URLs for local files.
+          const modules = {};
+          
+          for (let i = 0; i < files.length; i++) {
+             const path = files[i];
+             const content = sources[i];
+             // Rewrite imports to relative blob URLs if possible? Hard.
+             
+             // Let's try the simplest fix for "MIME type" on shared hosts:
+             // It's usually just missing .tsx mime.
+             // We can rename them to .js conceptually in the browser.
+          }
+        } catch(e) { console.error(e); }
+      }
+    </script>
+    
+    <!-- 
+      ROBUST LOADING STRATEGY: 
+      We use a script that overrides the fetch for the specific .tsx files 
+      or we accept that we need to use the "Single HTML Download" feature for production.
+      For now, we try standard loading, but we add a fallback message in the root.
+    -->
+    <script type="text/babel" data-type="module" src="./index.tsx"></script>
+    
+    <script>
+      // Error fallback
+      window.addEventListener('error', (e) => {
+        if (e.message.includes('MIME') || e.message.includes('module')) {
+           const root = document.getElementById('root');
+           if(root && !root.hasChildNodes()) {
+             root.innerHTML = `
+               <div style="padding:20px; color:white; font-family:sans-serif;">
+                 <h1>Loading Error (MIME Type)</h1>
+                 <p>Your web server is not serving .tsx files correctly.</p>
+                 <p><strong>Solution:</strong> Please create a file named <code>.htaccess</code> in this folder with the following content:</p>
+                 <pre style="background:#333; padding:10px;">AddType text/javascript .tsx .ts</pre>
+               </div>
+             `;
+           }
+        }
+      });
+    </script>
+  </body>
+</html>

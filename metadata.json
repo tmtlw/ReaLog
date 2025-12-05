@@ -1,0 +1,7 @@
+{
+  "name": "Grind Napló",
+  "description": "Minimalista, JSON-alapú napló a fejlődés követésére. Napi, heti, havi és éves felbontás. Jelszóval védett adminisztráció és publikus nézet.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
