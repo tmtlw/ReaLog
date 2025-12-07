@@ -1,19 +1,17 @@
 import React, { useState } from 'react';
-import { Terminal, X, Server, CheckCircle2, CloudLightning, HardDrive, Clock, MapPin, FileText } from 'lucide-react';
-import { CloudConfig } from '../../types';
+import { Terminal, X, Server, CheckCircle2, HardDrive, Clock, MapPin, FileText } from 'lucide-react';
 
 const StorageDebugMenu: React.FC<{
     onClose: () => void;
-    onSwitchMode: (mode: 'server' | 'cloud' | 'local') => Promise<void>;
+    onSwitchMode: (mode: 'server' | 'local') => Promise<void>;
     serverMode: boolean;
-    cloudConfig: CloudConfig | undefined;
     lastError: string;
     themeClasses: any;
-}> = ({ onClose, onSwitchMode, serverMode, cloudConfig, lastError, themeClasses }) => {
+}> = ({ onClose, onSwitchMode, serverMode, lastError, themeClasses }) => {
     const [loading, setLoading] = useState(false);
     const [testResult, setTestResult] = useState("");
 
-    const handleSwitch = async (mode: 'server' | 'cloud' | 'local') => {
+    const handleSwitch = async (mode: 'server' | 'local') => {
         setLoading(true);
         setTestResult("");
         try {
@@ -25,7 +23,7 @@ const StorageDebugMenu: React.FC<{
         }
     };
 
-    const currentPlace = serverMode ? 'Szerver' : cloudConfig?.enabled ? 'Felhő' : 'Helyi';
+    const currentPlace = serverMode ? 'Szerver' : 'Helyi';
 
     return (
         <div className="fixed bottom-8 left-2 z-[110] animate-fade-in origin-bottom-left">
@@ -61,21 +59,12 @@ const StorageDebugMenu: React.FC<{
                     </button>
 
                     <button 
-                        onClick={() => handleSwitch('cloud')}
-                        disabled={loading || !cloudConfig?.url}
-                        className={`w-full text-left p-2 rounded text-xs flex items-center justify-between transition-colors ${!serverMode && cloudConfig?.enabled ? 'bg-blue-500/20 border border-blue-500/50' : 'hover:bg-black/5 border border-transparent'} ${!cloudConfig?.url ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                        <span className="flex items-center gap-2"><CloudLightning className="w-3 h-3" /> Külső Felhő (API)</span>
-                        {!serverMode && cloudConfig?.enabled && <CheckCircle2 className="w-3 h-3 text-blue-500" />}
-                    </button>
-
-                    <button 
                         onClick={() => handleSwitch('local')}
                         disabled={loading}
-                        className={`w-full text-left p-2 rounded text-xs flex items-center justify-between transition-colors ${!serverMode && !cloudConfig?.enabled ? 'bg-zinc-500/20 border border-zinc-500/50' : 'hover:bg-black/5 border border-transparent'}`}
+                        className={`w-full text-left p-2 rounded text-xs flex items-center justify-between transition-colors ${!serverMode ? 'bg-zinc-500/20 border border-zinc-500/50' : 'hover:bg-black/5 border border-transparent'}`}
                     >
                         <span className="flex items-center gap-2"><HardDrive className="w-3 h-3" /> Csak Helyi (Offline)</span>
-                        {!serverMode && !cloudConfig?.enabled && <CheckCircle2 className="w-3 h-3 opacity-50" />}
+                        {!serverMode && <CheckCircle2 className="w-3 h-3 opacity-50" />}
                     </button>
                 </div>
 

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Layers, Shield, Globe, Images, User, Cloud } from 'lucide-react';
+import { Layers, Shield, Globe, Images, User, Info, Heart } from 'lucide-react';
 import { AppData, Category, ThemeOption } from '../../types';
 import { Button, Card, Input } from '../ui';
 import { DEFAULT_MOODS } from '../../constants';
+import { CHANGELOG, APP_VERSION } from '../../changelog';
 
 const SettingsModal: React.FC<{ 
     onClose: () => void, 
@@ -12,7 +13,7 @@ const SettingsModal: React.FC<{
     currentTheme: ThemeOption, 
     setCurrentTheme: (t: ThemeOption) => void
 }> = ({ onClose, data, setData, themeClasses, currentTheme, setCurrentTheme }) => {
-    const [activeTab, setActiveTab] = useState<'general' | 'views' | 'public' | 'account' | 'cloud'>('general');
+    const [activeTab, setActiveTab] = useState<'general' | 'views' | 'public' | 'account' | 'about'>('general');
     const [localSettings, setLocalSettings] = useState(data.settings || {});
 
     const handleSave = () => {
@@ -41,7 +42,7 @@ const SettingsModal: React.FC<{
                     <button onClick={() => setActiveTab('views')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'views' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>Nézet</button>
                     <button onClick={() => setActiveTab('public')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'public' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>Publikus</button>
                     <button onClick={() => setActiveTab('account')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'account' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>Fiók</button>
-                    <button onClick={() => setActiveTab('cloud')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'cloud' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>Felhő</button>
+                    <button onClick={() => setActiveTab('about')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'about' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>Rólam</button>
                 </div>
 
                 <div className="p-6 overflow-y-auto flex-1">
@@ -228,47 +229,37 @@ const SettingsModal: React.FC<{
                         </div>
                     )}
 
-                    {activeTab === 'cloud' && (
-                        <div className="space-y-6">
-                            <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-sm">
-                                <h4 className="font-bold flex items-center gap-2 mb-2 text-emerald-500"><Cloud className="w-4 h-4" /> Külső Szinkronizáció</h4>
-                                <p className="opacity-80 mb-2">
-                                    Ha nem a saját szervereden futtatod az alkalmazást, itt beállíthatsz egy külső JSON tárolót (pl. JSONBin.io).
-                                </p>
-                                <a href="https://jsonbin.io" target="_blank" className="underline font-bold hover:text-emerald-400">JSONBin.io Regisztráció &rarr;</a>
+                    {activeTab === 'about' && (
+                        <div className="space-y-6 text-center h-full flex flex-col">
+                            <div className="mb-6 mt-4">
+                                <h2 className="text-4xl font-black bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text text-transparent tracking-tighter drop-shadow-sm">ReaLog</h2>
+                                <p className={`text-xs opacity-60 font-mono mt-2`}>v{APP_VERSION}</p>
+                            </div>
+                            
+                            <div className={`text-left flex-1 overflow-y-auto rounded-xl border p-0 ${themeClasses.card} bg-black/5 relative`}>
+                                <div className="sticky top-0 bg-inherit border-b p-3 flex items-center gap-2 font-bold text-xs uppercase opacity-70 z-10">
+                                    <Info className="w-4 h-4" /> Változásnapló
+                                </div>
+                                <div className="p-4 space-y-6">
+                                    {CHANGELOG.map((log, idx) => (
+                                        <div key={idx} className="relative pl-4 border-l-2 border-current border-opacity-10">
+                                            <div className={`absolute -left-[5px] top-1.5 w-2 h-2 rounded-full ${idx === 0 ? 'bg-emerald-500' : 'bg-current opacity-30'}`}></div>
+                                            <div className="flex justify-between items-baseline mb-1">
+                                                <span className="font-bold text-sm">v{log.version}</span>
+                                                <span className="text-[10px] opacity-50 font-mono">{log.date}</span>
+                                            </div>
+                                            <ul className="text-xs space-y-1 opacity-80 list-disc pl-3">
+                                                {log.changes.map((change, cIdx) => (
+                                                    <li key={cIdx}>{change}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
 
-                            <div className="flex items-center gap-3">
-                                <input 
-                                    type="checkbox" 
-                                    id="cloudEnabled"
-                                    checked={localSettings.cloud?.enabled || false}
-                                    onChange={(e) => setLocalSettings(prev => ({...prev, cloud: { ...prev.cloud, enabled: e.target.checked } }))}
-                                    className="w-5 h-5 accent-emerald-500"
-                                />
-                                <label htmlFor="cloudEnabled" className="font-bold cursor-pointer">Külső felhő engedélyezése</label>
-                            </div>
-
-                            <div className={!localSettings.cloud?.enabled ? 'opacity-50 pointer-events-none' : ''}>
-                                <div className="mb-4">
-                                    <label className={`text-xs uppercase font-bold block mb-1 ${themeClasses.subtext}`}>API URL (Endpoint)</label>
-                                    <Input 
-                                        themeClasses={themeClasses} 
-                                        placeholder="https://api.jsonbin.io/v3/b/<BIN_ID>"
-                                        value={localSettings.cloud?.url || ''}
-                                        onChange={(e: any) => setLocalSettings(prev => ({...prev, cloud: { ...prev.cloud, url: e.target.value } }))}
-                                    />
-                                </div>
-                                <div>
-                                    <label className={`text-xs uppercase font-bold block mb-1 ${themeClasses.subtext}`}>API Kulcs (Auth Header)</label>
-                                    <Input 
-                                        themeClasses={themeClasses} 
-                                        type="password"
-                                        placeholder="X-Master-Key vagy Bearer Token"
-                                        value={localSettings.cloud?.apiKey || ''}
-                                        onChange={(e: any) => setLocalSettings(prev => ({...prev, cloud: { ...prev.cloud, apiKey: e.target.value } }))}
-                                    />
-                                </div>
+                            <div className="pt-6 pb-2 text-sm font-medium text-pink-500 animate-pulse flex items-center justify-center gap-2">
+                                Szeretettel Rea-nak <Heart className="w-4 h-4 fill-current" />
                             </div>
                         </div>
                     )}

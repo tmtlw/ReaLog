@@ -1,4 +1,4 @@
-import { AppData, Entry, Category, CloudConfig } from '../types';
+import { AppData, Entry, Category } from '../types';
 import { INITIAL_DATA, CATEGORY_LABELS } from '../constants';
 
 // Old key for migration
@@ -211,65 +211,6 @@ export const uploadImage = async (file: File): Promise<string> => {
     const json = await res.json();
     if (json.error) throw new Error(json.error);
     return json.url;
-};
-
-// --- Cloud Storage (REST API - External) ---
-
-export const cloudLoad = async (config: CloudConfig): Promise<AppData | null> => {
-    if (!config.url) throw new Error("Hiányzó URL");
-    
-    const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-    };
-    if (config.apiKey) {
-        headers['Authorization'] = `Bearer ${config.apiKey}`;
-        headers['X-Master-Key'] = config.apiKey; 
-        headers['X-Access-Key'] = config.apiKey;
-    }
-
-    // Add timestamp for cloud as well
-    const urlWithCacheBuster = config.url.includes('?') ? `${config.url}&t=${Date.now()}` : `${config.url}?t=${Date.now()}`;
-
-    const response = await fetch(urlWithCacheBuster, { method: 'GET', headers });
-    
-    if (!response.ok) {
-        throw new Error(`Szerver hiba: ${response.status}`);
-    }
-
-    const json = await response.json();
-    
-    if (json.record && (json.record.entries || json.record.questions)) {
-        return json.record as AppData;
-    }
-    
-    if (json.entries || json.questions) {
-        return json as AppData;
-    }
-    
-    return null;
-};
-
-export const cloudSave = async (data: AppData, config: CloudConfig): Promise<void> => {
-    if (!config.url) throw new Error("Hiányzó URL");
-
-    const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-    };
-    if (config.apiKey) {
-        headers['Authorization'] = `Bearer ${config.apiKey}`;
-        headers['X-Master-Key'] = config.apiKey;
-        headers['X-Access-Key'] = config.apiKey;
-    }
-
-    const response = await fetch(config.url, {
-        method: 'PUT', 
-        headers,
-        body: JSON.stringify(data)
-    });
-
-    if (!response.ok) {
-        throw new Error(`Mentés sikertelen: ${response.status} ${response.statusText}`);
-    }
 };
 
 // --- Import/Export ---

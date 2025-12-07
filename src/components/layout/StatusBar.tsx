@@ -1,5 +1,5 @@
 import React from 'react';
-import { Server, CloudLightning, HardDrive, RefreshCw, AlertCircle, CheckCircle2, Database, Activity, ChevronUp } from 'lucide-react';
+import { Server, HardDrive, RefreshCw, AlertCircle, CheckCircle2, Database, Activity, ChevronUp } from 'lucide-react';
 
 const StatusBar: React.FC<{
     serverMode: boolean;
@@ -7,12 +7,10 @@ const StatusBar: React.FC<{
     lastSyncTime: number | null;
     systemMessage: string;
     themeClasses: any;
-    cloudEnabled: boolean;
     onOpenDebug: () => void;
-}> = ({ serverMode, syncStatus, lastSyncTime, systemMessage, themeClasses, cloudEnabled, onOpenDebug }) => {
+}> = ({ serverMode, syncStatus, lastSyncTime, systemMessage, themeClasses, onOpenDebug }) => {
     const getServerStatus = () => {
         if (serverMode) return { icon: <Server className="w-3 h-3 text-emerald-500" />, text: "Szerver: Online" };
-        if (cloudEnabled) return { icon: <CloudLightning className="w-3 h-3 text-blue-500" />, text: "Felhő: Aktív" };
         return { icon: <HardDrive className="w-3 h-3 opacity-50" />, text: "Helyi Tároló" };
     };
 
@@ -27,7 +25,7 @@ const StatusBar: React.FC<{
         if (systemMessage) return { icon: <Activity className="w-3 h-3 text-red-500" />, text: systemMessage, isError: true };
         
         const time = lastSyncTime ? new Date(lastSyncTime).toLocaleTimeString() : "--:--";
-        const place = serverMode ? 'Szerver' : cloudEnabled ? 'Felhő' : 'Helyi';
+        const place = serverMode ? 'Szerver' : 'Helyi';
         
         // Format: "Mentés: IDŐ • HELY"
         return { 

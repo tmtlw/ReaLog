@@ -71,6 +71,12 @@ export default function App() {
         setIsAppLoading(true);
         const local = StorageService.loadData();
         if (local.settings?.theme) setCurrentTheme(local.settings.theme);
+        
+        // Restore session
+        if (StorageService.checkAuthSession()) {
+            setIsAdmin(true);
+        }
+
         const status = await StorageService.checkServerStatus();
         if (status.online) {
             setServerMode(true);
@@ -90,28 +96,8 @@ export default function App() {
         } else {
              console.log("Server Offline:", status.message, status.details);
         }
-        if (local.settings?.cloud?.enabled && local.settings.cloud.url) {
-            setSyncStatus('syncing');
-            try {
-                const cloudData = await StorageService.cloudLoad(local.settings.cloud);
-                if (cloudData) {
-                    const mergedData = { ...cloudData, settings: { ...local.settings, ...cloudData.settings } };
-                    setData(mergedData);
-                    setSyncStatus('success');
-                    setLastSyncTime(Date.now());
-                    setSystemMessage("");
-                } else {
-                    setData(local);
-                    setSyncStatus('idle');
-                }
-            } catch (e) {
-                setSyncStatus('error');
-                setSystemMessage("Felhő szinkronizációs hiba!");
-                setData(local);
-            }
-        } else {
-            setData(local);
-        }
+        
+        setData(local);
         setIsAppLoading(false);
     }
     init();
@@ -137,7 +123,7 @@ export default function App() {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     if(isAppLoading) return;
 
-    // Only save to Server/Cloud if Admin is logged in
+    // Only save to Server if Admin is logged in
     if (serverMode && isAdmin) {
         setSyncStatus('syncing');
         saveTimeoutRef.current = setTimeout(async () => {
@@ -152,21 +138,7 @@ export default function App() {
                 setSystemMessage("Szerver mentési hiba!");
             }
         }, 1000);
-    } else if (data.settings?.cloud?.enabled && data.settings.cloud.url && isAdmin) {
-        setSyncStatus('syncing');
-        saveTimeoutRef.current = setTimeout(async () => {
-            try {
-                await StorageService.cloudSave(data, data.settings!.cloud!);
-                setSyncStatus('success');
-                setLastSyncTime(Date.now());
-                setSystemMessage("");
-                setTimeout(() => setSyncStatus('idle'), 2000);
-            } catch (e) {
-                setSyncStatus('error');
-                setSystemMessage("Felhő mentési hiba!");
-            }
-        }, 2000);
-    }
+    } 
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, [data, serverMode, isAdmin]);
 
@@ -214,7 +186,7 @@ export default function App() {
       }
   };
 
-  const handleStorageModeSwitch = async (mode: 'server' | 'cloud' | 'local') => {
+  const handleStorageModeSwitch = async (mode: 'server' | 'local') => {
       if (mode === 'server') {
           try {
               const status = await StorageService.checkServerStatus();
@@ -233,28 +205,8 @@ export default function App() {
               throw new Error(msg);
           }
       } 
-      else if (mode === 'cloud') {
-          if (!data.settings?.cloud?.url) throw new Error("Nincs beállítva felhő URL");
-          setServerMode(false);
-          try {
-              const cloudData = await StorageService.cloudLoad(data.settings.cloud);
-              if (cloudData) {
-                  setData(prev => ({...cloudData, settings: {...prev.settings, ...cloudData.settings}}));
-                  setSystemMessage("");
-              } else {
-                  throw new Error("Üres válasz a felhőből");
-              }
-          } catch(e: any) {
-              setSystemMessage(e.message || "Felhő hiba");
-              throw e;
-          }
-      }
       else {
           setServerMode(false);
-          setData(prev => {
-              if (prev.settings?.cloud) return { ...prev, settings: { ...prev.settings, cloud: { ...prev.settings.cloud, enabled: false } } };
-              return prev;
-          });
           setSystemMessage("Offline Mód Aktív");
       }
   };
@@ -265,6 +217,7 @@ export default function App() {
     const currentPassword = data.settings?.adminPassword || DEMO_PASSWORD;
     if (passwordInput === currentPassword) {
       setIsAdmin(true);
+      StorageService.saveAuthSession();
       setShowAuthModal(false);
       setPasswordInput("");
     } else {
@@ -273,6 +226,7 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    StorageService.clearAuthSession();
     setIsAdmin(false);
     setIsEditing(false);
     setActiveTab('entries');
@@ -442,7 +396,7 @@ export default function App() {
         {showExportModal && <ExportModal onClose={() => setShowExportModal(false)} data={data} onImport={handleImport} themeClasses={themeClasses} currentTheme={currentTheme} />}
         {showSettingsModal && <SettingsModal onClose={() => setShowSettingsModal(false)} data={data} setData={setData} themeClasses={themeClasses} currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} />}
         {showDeployModal && <DeployModal onClose={() => setShowDeployModal(false)} themeClasses={themeClasses} />}
-        {showStorageMenu && <StorageDebugMenu onClose={() => setShowStorageMenu(false)} onSwitchMode={handleStorageModeSwitch} serverMode={serverMode} cloudConfig={data.settings?.cloud} lastError={systemMessage} themeClasses={themeClasses} />}
+        {showStorageMenu && <StorageDebugMenu onClose={() => setShowStorageMenu(false)} onSwitchMode={handleStorageModeSwitch} serverMode={serverMode} lastError={systemMessage} themeClasses={themeClasses} />}
 
         {selectedEntry && (
             <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-fade-in" onClick={() => setSelectedEntry(null)}>
@@ -660,7 +614,6 @@ export default function App() {
                 lastSyncTime={lastSyncTime} 
                 systemMessage={systemMessage} 
                 themeClasses={themeClasses}
-                cloudEnabled={!!data.settings?.cloud?.enabled}
                 onOpenDebug={() => setShowStorageMenu(true)}
             />
         )}
