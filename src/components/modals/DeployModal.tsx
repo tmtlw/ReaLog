@@ -4,7 +4,7 @@ import { Button, Card } from '../ui';
 import { SERVER_CODE_JSCRIPT, SERVER_CODE_PHP, SERVER_CODE_HTACCESS_PHP, SERVER_CODE_HTACCESS_NODE } from '../../constants/serverTemplates';
 import { DEFAULT_QUESTIONS } from '../../constants';
 
-const APP_VERSION = "2.7";
+const APP_VERSION = "2.8";
 
 const DeployModal: React.FC<{ onClose: () => void, themeClasses: any }> = ({ onClose, themeClasses }) => {
     const [isZipping, setIsZipping] = useState(false);
@@ -26,8 +26,8 @@ const DeployModal: React.FC<{ onClose: () => void, themeClasses: any }> = ({ onC
             const files = [
                 // Root configuration & entry points
                 'index.html', 'index.tsx', 'types.ts', 'constants.ts', 'style.css', 'package.json', 'metadata.json',
-                // Services (ensure paths match where they are actually served from)
-                'src/services/storage.ts', 'src/services/gemini.ts',
+                // Services
+                'src/services/storage.ts',
                 // Main Component
                 'src/App.tsx',
                 // Constants
@@ -47,8 +47,6 @@ const DeployModal: React.FC<{ onClose: () => void, themeClasses: any }> = ({ onC
             await Promise.all(files.map(async (f) => {
                 try {
                     // Try fetching the file. 
-                    // Note: In some dev setups 'src/' might be served from root, in others strict paths. 
-                    // We attempt to fetch exactly as listed.
                     const res = await fetch(f);
                     if (!res.ok) {
                         // Fallback: try removing 'src/' if not found, just in case of flat deployment

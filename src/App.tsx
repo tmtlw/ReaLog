@@ -5,14 +5,12 @@ import {
   Image as ImageIcon, Calendar, List, Grid as GridIcon,
   Settings, Server, MapPin, Eye, EyeOff, Search, ChevronLeft, Map as MapIcon,
   ThermometerSun, Menu, LogOut,
-  Globe, Images, Bold, Italic, Underline, Link as LinkIcon,
-  Brain
+  Globe, Images, Bold, Italic, Underline, Link as LinkIcon
 } from 'lucide-react';
 import { AppData, Category, Entry, WeatherData, ThemeOption, CategoryConfig } from './types';
 import { CATEGORY_LABELS, DEMO_PASSWORD, INITIAL_DATA, DEFAULT_QUESTIONS, CATEGORY_COLORS } from './constants';
 import { THEMES } from './constants/theme';
 import * as StorageService from './services/storage';
-import { analyzeEntry } from './services/gemini';
 
 // Imported Components
 import { Button, Card, Input } from './components/ui';
@@ -66,7 +64,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'entries' | 'questions'>('entries');
   const [isFetchingWeather, setIsFetchingWeather] = useState(false);
   const [locationParts, setLocationParts] = useState<string[]>([]);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -515,25 +512,6 @@ export default function App() {
       }
   };
 
-  const handleAnalyze = async () => {
-      const text = currentEntry.entryMode === 'free' 
-          ? currentEntry.freeTextContent 
-          : Object.entries(currentEntry.responses || {}).map(([k,v]) => v).join('\n');
-      
-      if (!text || text.trim().length < 10) {
-          alert("Írj legalább pár mondatot az elemzéshez!");
-          return;
-      }
-
-      setIsAnalyzing(true);
-      const result = await analyzeEntry(text, CATEGORY_LABELS[activeCategory]);
-      setIsAnalyzing(false);
-      
-      // Simple result display for now - append to free text or show alert? 
-      // Let's show alert or better, a modal. For simplicity, alert.
-      alert(`AI Coach Véleménye:\n\n${result}`);
-  };
-
   const handleViewModeChange = (mode: 'grid' | 'timeline' | 'calendar' | 'atlas' | 'gallery') => {
       setViewMode(mode);
       if (activeCategory) {
@@ -698,10 +676,6 @@ export default function App() {
              <Button type="button" variant="secondary" themeClasses={themeClasses} onClick={getLocationAndWeather} disabled={isFetchingWeather} size="sm">
                  {isFetchingWeather ? <RefreshCw className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
                  Helyszín & Időjárás
-             </Button>
-             <Button type="button" variant="secondary" themeClasses={themeClasses} onClick={handleAnalyze} disabled={isAnalyzing} size="sm">
-                 {isAnalyzing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Brain className="w-4 h-4" />}
-                 AI Elemzés
              </Button>
              <Button type="button" variant="secondary" themeClasses={themeClasses} onClick={() => fileInputRef.current?.click()} size="sm">
                  <ImageIcon className="w-4 h-4" /> {currentEntry.photo ? 'Fotó cseréje' : 'Fotó hozzáadása'}
