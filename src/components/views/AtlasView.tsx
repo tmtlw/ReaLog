@@ -8,7 +8,8 @@ const AtlasView: React.FC<{
   onSelectEntry: (e: Entry) => void;
   themeClasses: any;
   showAll?: boolean;
-}> = ({ entries, activeCategory, onSelectEntry, themeClasses, showAll }) => {
+  isAdmin?: boolean;
+}> = ({ entries, activeCategory, onSelectEntry, themeClasses, showAll, isAdmin }) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<any>(null);
 
@@ -30,10 +31,10 @@ const AtlasView: React.FC<{
            attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
-        // Filter out entries with private location
+        // Filter out entries with private location unless admin
         const entriesWithGps = (showAll 
             ? entries.filter(e => e.gps)
-            : entries).filter(e => !e.isLocationPrivate); 
+            : entries).filter(e => !e.isLocationPrivate || isAdmin); 
         
         if (entriesWithGps.length > 0) {
            const bounds: any[] = [];
@@ -68,7 +69,7 @@ const AtlasView: React.FC<{
                 mapInstanceRef.current = null;
             }
         }
-    }, [activeCategory, entries, showAll]); 
+    }, [activeCategory, entries, showAll, isAdmin]); 
 
     return (
         <div className="h-[600px] w-full rounded-xl overflow-hidden border relative z-0 animate-fade-in" ref={mapContainerRef}></div>

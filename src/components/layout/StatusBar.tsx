@@ -25,8 +25,16 @@ const StatusBar: React.FC<{
 
     const getSystemStatus = () => {
         if (systemMessage) return { icon: <Activity className="w-3 h-3 text-red-500" />, text: systemMessage, isError: true };
+        
         const time = lastSyncTime ? new Date(lastSyncTime).toLocaleTimeString() : "--:--";
-        return { icon: <Activity className="w-3 h-3 opacity-50" />, text: `Rendszer OK (${time})`, isError: false };
+        const place = serverMode ? 'Szerver' : cloudEnabled ? 'Felhő' : 'Helyi';
+        
+        // Format: "Mentés: IDŐ • HELY"
+        return { 
+            icon: <Activity className="w-3 h-3 opacity-50" />, 
+            text: `Mentés: ${time} • ${place}`, 
+            isError: false 
+        };
     };
 
     const server = getServerStatus();
@@ -38,7 +46,7 @@ const StatusBar: React.FC<{
             <div 
                 onClick={onOpenDebug}
                 className="flex-1 flex items-center justify-start px-3 gap-2 border-r border-current border-opacity-10 h-full overflow-hidden whitespace-nowrap cursor-pointer hover:bg-black/5 transition-colors relative group"
-                title="Kattints a tárolási mód váltásához és hibakereséshez"
+                title="Kattints a tárolási mód váltásához és napló megnyitásához"
             >
                 {server.icon}
                 <span className="opacity-90 font-semibold">{server.text}</span>

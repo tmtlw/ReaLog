@@ -61,10 +61,10 @@ const ExportModal: React.FC<{
                     <div className={`border-t pt-6 ${currentTheme === 'dark' ? 'border-zinc-800' : 'border-slate-200'}`}>
                         <label className={`block text-xs font-bold uppercase mb-2 ${themeClasses.subtext}`}>Importálás</label>
                         <div className="relative group">
-                            <input type="file" onChange={onImport} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept=".json" />
+                            <input type="file" onChange={onImport} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept=".json,.xml,.wxr" />
                             <div className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors group-hover:bg-black/5 ${currentTheme === 'dark' ? 'border-zinc-800' : 'border-slate-300'}`}>
                                 <Upload className="w-6 h-6 mx-auto mb-2 opacity-50" />
-                                <span className="text-sm font-medium">JSON fájl feltöltése</span>
+                                <span className="text-sm font-medium">JSON vagy WXR fájl feltöltése</span>
                             </div>
                         </div>
                     </div>

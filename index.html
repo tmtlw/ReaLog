@@ -59,12 +59,47 @@
       const modules = {};
       
       const CRITICAL_FILES = [
-        './constants.ts',
-        './types.ts',
-        './services/storage.ts',
-        './App.tsx',
-        './index.tsx',
-        './style.css'
+        // Root / Common
+        './metadata.json',
+        './package.json',
+        './style.css',
+        
+        // Source files (using src/ prefix to match new structure)
+        './src/index.tsx',
+        './src/App.tsx',
+        './src/types.ts',
+        './src/constants.ts',
+        
+        // Services
+        './src/services/storage.ts',
+        './src/services/gemini.ts',
+        
+        // Constants
+        './src/constants/theme.ts',
+        './src/constants/serverTemplates.ts',
+        
+        // UI
+        './src/components/ui/index.tsx',
+        
+        // Layout
+        './src/components/layout/StatusBar.tsx',
+        './src/components/layout/Navbar.tsx',
+        
+        // Forms
+        './src/components/forms/EntryEditor.tsx',
+
+        // Views
+        './src/components/views/AtlasView.tsx',
+        './src/components/views/GalleryView.tsx',
+        './src/components/views/CalendarView.tsx',
+        './src/components/views/QuestionManager.tsx',
+        './src/components/views/EntryList.tsx',
+        
+        // Modals
+        './src/components/modals/ExportModal.tsx',
+        './src/components/modals/SettingsModal.tsx',
+        './src/components/modals/DeployModal.tsx',
+        './src/components/modals/StorageDebugMenu.tsx'
       ];
 
       function updateStatus(msg, detail = "") {
@@ -97,58 +132,83 @@
         }
       }
 
+      function resolvePath(base, relative) {
+          const stack = base.split('/');
+          stack.pop(); // remove current filename
+          
+          const parts = relative.split('/');
+          
+          for (const part of parts) {
+              if (part === '.' || part === '') continue;
+              if (part === '..') {
+                  if (stack.length > 0 && stack[stack.length - 1] !== '.') {
+                      stack.pop();
+                  }
+              } else {
+                  stack.push(part);
+              }
+          }
+          return stack.join('/');
+      }
+
       function loadModule(key) {
           const mod = modules[key];
           if (!mod.loaded) {
-              // Polyfill process.env
-              const processMock = { env: { API_KEY: '' } }; // Add API_KEY here if needed or let user configure
-              mod.fn(customRequire, mod.exports, mod, processMock);
+              const processMock = { env: { API_KEY: '' } }; 
+              // Bind customRequire with key to allow relative resolution
+              const boundRequire = (id) => customRequire(id, key);
+              mod.fn(boundRequire, mod.exports, mod, processMock);
               mod.loaded = true;
           }
           return mod.exports;
       }
 
-      function customRequire(id) {
+      function customRequire(id, parent) {
         // 1. External Globals
         if (id === 'react') return window.React;
         if (id === 'react-dom/client') return window.ReactDOM;
         if (id === 'lucide-react') return window.lucide;
-        
+        if (id === '@google/genai') return { GoogleGenAI: class { constructor(){console.warn("GenAI mock");} models={generateContent:async()=>({text:"AI Disabled"})}; } };
+
         // 2. Resolve internal path
-        // Remove ./ and ../ to normalize paths for flat structure matching
-        let normalizedId = id.replace(/^\.\//, '').replace(/^\.\.\//, '');
+        let resolvedIds = [];
         
-        // Priority: Exact Match -> Extension Match -> Index Match
-        const candidates = [
-            normalizedId, 
-            normalizedId + '.ts', 
-            normalizedId + '.tsx',
-            './' + normalizedId,
-            './' + normalizedId + '.ts',
-            './' + normalizedId + '.tsx',
-            // Try relative resolution if not found
-            id,
-            id + '.ts',
-            id + '.tsx'
-        ];
+        // A) Relative import
+        if (id.startsWith('./') || id.startsWith('../')) {
+             if (parent) {
+                 resolvedIds.push(resolvePath(parent, id));
+             } else {
+                 resolvedIds.push(id); // Fallback if no parent
+             }
+        } else {
+             // B) Absolute/Top-level import
+             resolvedIds.push(id);
+             resolvedIds.push('src/' + id);
+             resolvedIds.push('./src/' + id);
+        }
+
+        const candidates = [];
+        for (const base of resolvedIds) {
+            candidates.push(base);
+            candidates.push(base + '.ts');
+            candidates.push(base + '.tsx');
+            candidates.push(base + '/index.tsx');
+            
+            // Try with ./ prefix if not present (for modules registered with ./)
+            if (!base.startsWith('./')) {
+                const dotted = './' + base;
+                candidates.push(dotted);
+                candidates.push(dotted + '.ts');
+                candidates.push(dotted + '.tsx');
+                candidates.push(dotted + '/index.tsx');
+            }
+        }
 
         for (const candidate of candidates) {
-            // Check direct match
             if (modules[candidate]) return loadModule(candidate);
-            
-            // Check fuzzy match (e.g. asking for "types" but we have "./types.ts")
-            const foundKey = Object.keys(modules).find(k => {
-                 const kClean = k.replace(/^\.\//, '');
-                 return k === candidate || kClean === candidate || kClean === candidate + '.ts' || kClean === candidate + '.tsx';
-            });
-            if (foundKey) return loadModule(foundKey);
         }
         
-        // Debug fallback
-        const available = Object.keys(modules);
-        console.error(`Module resolution failed for: ${id}. Normalized: ${normalizedId}`);
-        console.log("Available modules:", available);
-        
+        // console.error(`Module resolution failed for: ${id} from ${parent}`);
         throw new Error(`Modul nem található: ${id}`);
       }
 
@@ -164,15 +224,15 @@
                         <h1 style="font-size: 1.5rem; font-weight: bold; margin: 0;">Rendszerhiba</h1>
                     </div>
                     
-                    <p style="margin-bottom: 16px; line-height: 1.5; color: #a1a1aa;">Az alkalmazás indítása sikertelen.</p>
+                    <p style="margin-bottom: 16px; line-height: 1.5; color: #a1a1aa;">Az alkalmazás indítása sikertelen. Néhány fájl nem tölthető be.</p>
                     
                     ${missingFiles.length > 0 ? `
                     <div style="background: #27272a; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
-                        <h3 style="font-size: 0.875rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; color: #fbbf24;">Hibás vagy hiányzó fájlok:</h3>
-                        <ul style="list-style: none; padding: 0; margin: 0; font-family: monospace; font-size: 0.9rem;">
+                        <h3 style="font-size: 0.875rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; color: #fbbf24;">Hiányzó modulok:</h3>
+                        <ul style="list-style: none; padding: 0; margin: 0; font-family: monospace; font-size: 0.8rem; max-height: 150px; overflow-y: auto;">
                             ${missingFiles.map(f => `<li style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #3f3f46;">
                                 <span>${f}</span>
-                                <span style="color: #ef4444;">HIBA</span>
+                                <span style="color: #ef4444;">404</span>
                             </li>`).join('')}
                         </ul>
                     </div>
@@ -180,7 +240,7 @@
 
                     <div style="margin-bottom: 24px;">
                         <button onclick="location.reload()" style="width: 100%; background: #059669; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: background 0.2s;">
-                            Oldal újratöltése
+                            Újratöltés
                         </button>
                     </div>
                 </div>
@@ -190,7 +250,10 @@
 
       async function boot() {
         const missing = [];
-        const loadedCode = {};
+        
+        // Initialize Global Source Cache for DeployModal
+        window.__SOURCE_CACHE__ = {};
+        const loadedCode = window.__SOURCE_CACHE__;
 
         const fetchWithTimeout = async (url, ms = 5000) => {
              const controller = new AbortController();
@@ -206,10 +269,30 @@
         };
 
         for (const path of CRITICAL_FILES) {
-            updateStatus("Fájl letöltése:", path);
+            updateStatus("Betöltés:", path);
             try {
-                const res = await fetchWithTimeout(path);
+                // Try fetching path as is
+                let res = await fetchWithTimeout(path);
+                
+                // Fallback for flat structure if src/ path fails
+                if (!res.ok && path.includes('src/')) {
+                    const flatPath = path.replace('src/', '');
+                    // console.log(`Fallback fetch for ${path} -> ${flatPath}`);
+                    const resFlat = await fetchWithTimeout(flatPath);
+                    if (resFlat.ok) res = resFlat;
+                }
+                
+                if (!res.ok) {
+                     // Try fallback for non-src paths that might be in src/
+                     if (!path.includes('src/') && !path.endsWith('.css') && !path.endsWith('.json')) {
+                         const srcPath = './src/' + path.replace(/^\.\//, '');
+                         const resSrc = await fetchWithTimeout(srcPath);
+                         if (resSrc.ok) res = resSrc;
+                     }
+                }
+
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                
                 const text = await res.text();
                 
                 if (path.endsWith('.ts') || path.endsWith('.tsx')) {
@@ -221,7 +304,10 @@
                 loadedCode[path] = text;
             } catch (e) {
                 console.warn(`Failed to load ${path}:`, e);
-                missing.push(path);
+                // Don't mark styles or metadata as critical failure
+                if (!path.endsWith('.css') && !path.endsWith('metadata.json') && !path.endsWith('package.json')) {
+                    missing.push(path);
+                }
             }
         }
 
@@ -230,9 +316,20 @@
         } else {
             try {
                 updateStatus("Fájlok feldolgozása...");
-                for (const path of CRITICAL_FILES) {
+                for (const path of Object.keys(loadedCode)) {
                     if (path.endsWith('.ts') || path.endsWith('.tsx')) {
                         registerModule(path, loadedCode[path]);
+                        
+                        // Fix for mixed relative imports (root vs src)
+                        // If we loaded something like ./src/types.ts, we alias it to ./types.ts as well
+                        if (path.includes('types.ts')) {
+                             if (!modules['./types.ts']) registerModule('./types.ts', loadedCode[path]);
+                             if (!modules['./src/types.ts']) registerModule('./src/types.ts', loadedCode[path]);
+                        }
+                        if (path.includes('constants.ts')) {
+                             if (!modules['./constants.ts']) registerModule('./constants.ts', loadedCode[path]);
+                             if (!modules['./src/constants.ts']) registerModule('./src/constants.ts', loadedCode[path]);
+                        }
                     }
                 }
                 
@@ -242,7 +339,20 @@
                      throw new Error("React könyvtár nem töltődött be.");
                 }
 
-                customRequire('./index.tsx');
+                // Initial require - handle ./src/index.tsx correctly
+                // We use a dummy parent '.' for strict relative resolution if needed, 
+                // but absolute/fuzzy fallback in customRequire will handle it anyway.
+                try {
+                    customRequire('./src/index.tsx');
+                } catch(e) {
+                    try {
+                        customRequire('./index.tsx');
+                    } catch(e2) {
+                        // One last try for common misconfiguration
+                        console.error(e, e2);
+                        throw new Error(`Modul nem található: ./index.tsx (vagy src/index.tsx)`);
+                    }
+                }
             } catch (compileError) {
                 console.error(compileError);
                 const root = document.getElementById('root');

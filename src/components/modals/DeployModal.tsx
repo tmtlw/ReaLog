@@ -1,78 +1,158 @@
 import React, { useState } from 'react';
-import { Server, X, RefreshCw, Code, Copy } from 'lucide-react';
+import { Server, X, RefreshCw, Code, Copy, AlertTriangle } from 'lucide-react';
 import { Button, Card } from '../ui';
 import { SERVER_CODE_JSCRIPT, SERVER_CODE_PHP, SERVER_CODE_HTACCESS_PHP, SERVER_CODE_HTACCESS_NODE } from '../../constants/serverTemplates';
 import { DEFAULT_QUESTIONS } from '../../constants';
 
-const APP_VERSION = "2.8";
+const APP_VERSION = "2.9";
 
 const DeployModal: React.FC<{ onClose: () => void, themeClasses: any }> = ({ onClose, themeClasses }) => {
     const [isZipping, setIsZipping] = useState(false);
     const [activeTab, setActiveTab] = useState<'install' | 'files'>('install');
     const [serverType, setServerType] = useState<'nodejs' | 'php'>('php');
+    const [errorLog, setErrorLog] = useState<string[]>([]);
 
     const handleDownloadSource = async () => {
         setIsZipping(true);
+        setErrorLog([]);
+        
         try {
             // @ts-ignore
             if (typeof window.JSZip === 'undefined') {
-                alert("JSZip könyvtár nem töltődött be. Kérlek frissítsd az oldalt, vagy ellenőrizd az internetkapcsolatot.");
+                alert("JSZip könyvtár nem töltődött be. Ellenőrizd az internetkapcsolatot és frissíts.");
                 setIsZipping(false);
                 return;
             }
 
             // @ts-ignore
             const zip = new window.JSZip();
+            
             const files = [
-                // Root configuration & entry points
-                'index.html', 'index.tsx', 'types.ts', 'constants.ts', 'style.css', 'package.json', 'metadata.json',
+                // Root files
+                'index.html', 
+                'package.json', 
+                'metadata.json', 
+                'style.css',
+                
+                // Source root files
+                'src/index.tsx', 
+                'src/types.ts', 
+                'src/constants.ts', 
+                'src/App.tsx',
+                
                 // Services
                 'src/services/storage.ts',
-                // Main Component
-                'src/App.tsx',
+                'src/services/gemini.ts',
+                
                 // Constants
-                'src/constants/theme.ts', 'src/constants/serverTemplates.ts',
+                'src/constants/theme.ts', 
+                'src/constants/serverTemplates.ts',
+                
                 // Components - UI
                 'src/components/ui/index.tsx',
+                
                 // Components - Layout
                 'src/components/layout/StatusBar.tsx',
+                'src/components/layout/Navbar.tsx',
+                
+                // Components - Forms
+                'src/components/forms/EntryEditor.tsx',
+                
                 // Components - Views
-                'src/components/views/AtlasView.tsx', 'src/components/views/GalleryView.tsx', 
-                'src/components/views/CalendarView.tsx', 'src/components/views/QuestionManager.tsx',
+                'src/components/views/AtlasView.tsx', 
+                'src/components/views/GalleryView.tsx', 
+                'src/components/views/CalendarView.tsx', 
+                'src/components/views/QuestionManager.tsx',
+                'src/components/views/EntryList.tsx',
+                
                 // Components - Modals
-                'src/components/modals/ExportModal.tsx', 'src/components/modals/SettingsModal.tsx',
-                'src/components/modals/DeployModal.tsx', 'src/components/modals/StorageDebugMenu.tsx'
+                'src/components/modals/ExportModal.tsx', 
+                'src/components/modals/SettingsModal.tsx',
+                'src/components/modals/DeployModal.tsx', 
+                'src/components/modals/StorageDebugMenu.tsx'
             ];
             
+            const failedFiles: string[] = [];
+            // @ts-ignore
+            const sourceCache = window.__SOURCE_CACHE__ || {};
+
             await Promise.all(files.map(async (f) => {
                 try {
-                    // Try fetching the file. 
-                    const res = await fetch(f);
-                    if (!res.ok) {
-                        // Fallback: try removing 'src/' if not found, just in case of flat deployment
-                        const fallbackRes = await fetch(f.replace('src/', ''));
-                        if (fallbackRes.ok) {
-                            const text = await fallbackRes.text();
-                            zip.file(f, text);
-                            return;
-                        }
-                        throw new Error("File not found");
+                    const ts = Date.now();
+                    const zipPath = f; // Store in zip with original structure (e.g. src/App.tsx)
+                    
+                    // Try to retrieve from global cache first (avoids 404s for compiled files)
+                    // Cache keys usually start with ./
+                    const cacheKey = f.startsWith('./') ? f : `./${f}`;
+                    if (sourceCache[cacheKey]) {
+                        zip.file(zipPath, sourceCache[cacheKey]);
+                        return;
                     }
-                    const text = await res.text();
-                    zip.file(f, text);
-                } catch(e) { console.error(`Failed to load ${f}`, e); }
+
+                    // Fallback to fetch
+                    const strategies = [
+                        f,
+                        `./${f}`,
+                        f.replace('src/', ''),
+                        `./${f.replace('src/', '')}`
+                    ];
+                    
+                    // Special case for index.html - might need root fetch
+                    if (f === 'index.html') {
+                        strategies.push('.');
+                        strategies.push(window.location.pathname.split('/').pop() || 'index.html');
+                    }
+
+                    const uniqueStrategies = [...new Set(strategies)];
+                    
+                    let content = null;
+                    for (const url of uniqueStrategies) {
+                        try {
+                            // Try with timestamp first to bust cache if possible
+                            let res = await fetch(`${url}?t=${ts}`);
+                            if (!res.ok) {
+                                // Retry without timestamp (some static servers dislike query params)
+                                res = await fetch(url); 
+                            }
+                            
+                            if (res.ok) {
+                                content = await res.text();
+                                // Basic validation: check if returned HTML instead of code (common SPA fallback issue)
+                                if ((f.endsWith('.ts') || f.endsWith('.tsx') || f.endsWith('.json')) && content.trim().startsWith('<!DOCTYPE')) {
+                                    content = null; // invalid
+                                    continue; // Try next strategy
+                                }
+                                break;
+                            }
+                        } catch(e) { /* ignore and try next */ }
+                    }
+
+                    if (content) {
+                        zip.file(zipPath, content);
+                    } else {
+                        // Use hardcoded fallback for package.json if completely missing
+                        if (f === 'package.json') {
+                            zip.file(f, JSON.stringify({name: "grind-naplo", version: "2.0.0", description: "Grind Napló"}, null, 2));
+                        } else {
+                            throw new Error(`File not found`);
+                        }
+                    }
+                } catch(e) {
+                    console.error(`Failed to load ${f}`, e);
+                    failedFiles.push(f);
+                }
             }));
 
-            // Add the server files manually to zip
+            if (failedFiles.length > 0) {
+                setErrorLog(prev => [...prev, ...failedFiles.map(f => `Sikertelen letöltés: ${f}`)]);
+            }
+
+            // Add server files
             zip.file('api.jscript', SERVER_CODE_JSCRIPT);
             zip.file('api.php', SERVER_CODE_PHP);
-            
-            // Add separate empty JSON files structure
             zip.file('entries.json', '[]');
             zip.file('settings.json', '{}');
             zip.file('questions.json', JSON.stringify(DEFAULT_QUESTIONS));
-            
-            // Choose .htaccess based on selected server type (or include both)
             zip.file('.htaccess', serverType === 'php' ? SERVER_CODE_HTACCESS_PHP : SERVER_CODE_HTACCESS_NODE);
 
             const content = await zip.generateAsync({type:"blob"});
@@ -83,9 +163,9 @@ const DeployModal: React.FC<{ onClose: () => void, themeClasses: any }> = ({ onC
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-        } catch(e) {
+        } catch(e: any) {
             console.error(e);
-            alert("Hiba a tömörítés során. (Ellenőrizd a konzolt a részletekért)");
+            setErrorLog(prev => [...prev, `ZIP Hiba: ${e.message}`]);
         } finally {
             setIsZipping(false);
         }
@@ -142,6 +222,18 @@ const DeployModal: React.FC<{ onClose: () => void, themeClasses: any }> = ({ onC
                                     {isZipping ? "Csomagolás..." : `Teljes Forráskód Letöltése v${APP_VERSION} (.zip)`}
                                 </Button>
                                 <p className="text-[10px] text-center mt-2 opacity-50">Adatok (bejegyzések) nélkül</p>
+                                
+                                {errorLog.length > 0 && (
+                                    <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-300">
+                                        <div className="flex items-center gap-2 font-bold mb-2 text-red-400">
+                                            <AlertTriangle className="w-4 h-4" /> Hibák a letöltés során
+                                        </div>
+                                        <ul className="list-disc pl-4 space-y-1">
+                                            {errorLog.map((err, i) => <li key={i}>{err}</li>)}
+                                        </ul>
+                                        <p className="mt-2 opacity-70">Tipp: Frissítsd az oldalt és próbáld újra.</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ) : (

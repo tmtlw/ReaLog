@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { Layers, Shield, Globe, Images, User, Cloud } from 'lucide-react';
 import { AppData, Category, ThemeOption } from '../../types';
 import { Button, Card, Input } from '../ui';
-
-const DEFAULT_MOODS = ['🔥', '🚀', '🙂', '😐', '😫'];
+import { DEFAULT_MOODS } from '../../constants';
 
 const SettingsModal: React.FC<{ 
     onClose: () => void, 

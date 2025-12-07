@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Terminal, X, Server, CheckCircle2, CloudLightning, HardDrive } from 'lucide-react';
+import { Terminal, X, Server, CheckCircle2, CloudLightning, HardDrive, Clock, MapPin, FileText } from 'lucide-react';
 import { CloudConfig } from '../../types';
 
 const StorageDebugMenu: React.FC<{
@@ -25,14 +25,29 @@ const StorageDebugMenu: React.FC<{
         }
     };
 
+    const currentPlace = serverMode ? 'Szerver' : cloudConfig?.enabled ? 'Felhő' : 'Helyi';
+
     return (
         <div className="fixed bottom-8 left-2 z-[110] animate-fade-in origin-bottom-left">
             <div className={`rounded-lg shadow-xl border p-4 w-72 backdrop-blur-md ${themeClasses.card} ${themeClasses.text}`}>
                 <div className="flex justify-between items-center mb-3 pb-2 border-b border-white/10">
                     <h4 className="font-bold text-xs uppercase flex items-center gap-2">
-                        <Terminal className="w-3 h-3" /> Tároló Diagnosztika
+                        <Terminal className="w-3 h-3" /> Rendszernapló
                     </h4>
                     <button onClick={onClose}><X className="w-3 h-3" /></button>
+                </div>
+
+                {/* Last Save Log Info */}
+                <div className="mb-4 bg-black/10 p-2 rounded text-[10px] space-y-1">
+                    <div className="flex items-center gap-2 opacity-70">
+                        <Clock className="w-3 h-3" /> Idő: {new Date().toLocaleTimeString()}
+                    </div>
+                    <div className="flex items-center gap-2 opacity-70">
+                        <MapPin className="w-3 h-3" /> Hely: {currentPlace}
+                    </div>
+                    <div className="flex items-center gap-2 opacity-70">
+                        <FileText className="w-3 h-3" /> Név: Mentés (Auto)
+                    </div>
                 </div>
 
                 <div className="space-y-2">
