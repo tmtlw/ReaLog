@@ -4,156 +4,316 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Grind Napló</title>
+    
+    <!-- External Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;600;700&display=swap');
-      body {
-        font-family: 'Inter', sans-serif;
-        background-color: #09090b;
-        color: #e4e4e7;
-        transition: background-color 0.3s, color 0.3s;
-      }
-      pre, code {
-        font-family: 'JetBrains Mono', monospace;
-      }
-      /* Custom Scrollbar */
-      ::-webkit-scrollbar { width: 8px; }
-      ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: #52525b; border-radius: 4px; }
-      ::-webkit-scrollbar-thumb:hover { background: #71717a; }
-    </style>
-  <script type="importmap">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <!-- Leaflet for Atlas Mode -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="./style.css" />
+
+<script type="importmap">
 {
   "imports": {
-    "react-dom/client": "https://aistudiocdn.com/react-dom@^19.2.1/client",
-    "react-dom": "https://aistudiocdn.com/react-dom@^19.2.1",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.31.0",
     "react/": "https://aistudiocdn.com/react@^19.2.1/",
     "react": "https://aistudiocdn.com/react@^19.2.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
     "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/"
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.31.0"
   }
 }
 </script>
 </head>
-  <body>
-    <div id="root"></div>
+  <body class="bg-zinc-950 text-zinc-200">
+    <div id="root">
+        <!-- Initial Loader -->
+        <div style="height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 1rem;">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+            <div style="font-family: monospace; color: #71717a; text-align: center;">
+                <div id="loading-status">Rendszer indítása...</div>
+                <div id="loading-detail" style="font-size: 0.8em; opacity: 0.7; margin-top: 5px;">Inicializálás...</div>
+            </div>
+        </div>
+    </div>
     
-    <!-- Custom Loader to bypass strict MIME type checks on shared hosting -->
+    <!-- Client-Side Module Loader & System Check -->
     <script>
-      async function loadTsx(path) {
-        const response = await fetch(path);
-        if (!response.ok) throw new Error(`Failed to load ${path}`);
-        return await response.text();
+      // Global Error Handler for initial boot phase
+      window.onerror = function(msg, url, line, col, error) {
+         const root = document.getElementById('root');
+         if (root && !root.innerHTML.includes('Rendszerhiba')) {
+             root.innerHTML = `<div style="padding: 20px; color: #ef4444; font-family: monospace; background:#09090b; min-height:100vh;">
+                <h1 style="font-size:1.2em; font-weight:bold;">Végzetes Hiba</h1>
+                <p>${msg}</p>
+                <small>${url}:${line}:${col}</small>
+             </div>`;
+         }
+         return false;
+      };
+
+      const modules = {};
+      
+      const CRITICAL_FILES = [
+        './constants.ts',
+        './types.ts',
+        './services/storage.ts',
+        './App.tsx',
+        './index.tsx',
+        './style.css'
+      ];
+
+      function updateStatus(msg, detail = "") {
+          const statusEl = document.getElementById('loading-status');
+          const detailEl = document.getElementById('loading-detail');
+          if (statusEl) statusEl.textContent = msg;
+          if (detailEl) detailEl.textContent = detail;
+          console.log(`[System Check] ${msg} ${detail}`);
+      }
+
+      function registerModule(filename, code) {
+        if (typeof Babel === 'undefined') throw new Error("Babel könyvtár nem töltődött be.");
+        
+        try {
+            const transformed = Babel.transform(code, {
+                presets: ['react', 'typescript'],
+                filename: filename,
+                plugins: ['transform-modules-commonjs']
+            }).code;
+            
+            const moduleFn = new Function('require', 'exports', 'module', 'process', transformed);
+            
+            modules[filename] = {
+                fn: moduleFn,
+                exports: {}
+            };
+        } catch (e) {
+            console.error("Transpilation error in " + filename, e);
+            throw new Error(`Szintaktikai hiba a ${filename} fájlban: ${e.message}`);
+        }
+      }
+
+      function loadModule(key) {
+          const mod = modules[key];
+          if (!mod.loaded) {
+              // Polyfill process.env
+              const processMock = { env: { API_KEY: '' } }; // Add API_KEY here if needed or let user configure
+              mod.fn(customRequire, mod.exports, mod, processMock);
+              mod.loaded = true;
+          }
+          return mod.exports;
+      }
+
+      function customRequire(id) {
+        // 1. External Globals
+        if (id === 'react') return window.React;
+        if (id === 'react-dom/client') return window.ReactDOM;
+        if (id === 'lucide-react') return window.lucide;
+        
+        // 2. Resolve internal path
+        // Remove ./ and ../ to normalize paths for flat structure matching
+        let normalizedId = id.replace(/^\.\//, '').replace(/^\.\.\//, '');
+        
+        // Priority: Exact Match -> Extension Match -> Index Match
+        const candidates = [
+            normalizedId, 
+            normalizedId + '.ts', 
+            normalizedId + '.tsx',
+            './' + normalizedId,
+            './' + normalizedId + '.ts',
+            './' + normalizedId + '.tsx',
+            // Try relative resolution if not found
+            id,
+            id + '.ts',
+            id + '.tsx'
+        ];
+
+        for (const candidate of candidates) {
+            // Check direct match
+            if (modules[candidate]) return loadModule(candidate);
+            
+            // Check fuzzy match (e.g. asking for "types" but we have "./types.ts")
+            const foundKey = Object.keys(modules).find(k => {
+                 const kClean = k.replace(/^\.\//, '');
+                 return k === candidate || kClean === candidate || kClean === candidate + '.ts' || kClean === candidate + '.tsx';
+            });
+            if (foundKey) return loadModule(foundKey);
+        }
+        
+        // Debug fallback
+        const available = Object.keys(modules);
+        console.error(`Module resolution failed for: ${id}. Normalized: ${normalizedId}`);
+        console.log("Available modules:", available);
+        
+        throw new Error(`Modul nem található: ${id}`);
+      }
+
+      function renderErrorScreen(missingFiles) {
+          const root = document.getElementById('root');
+          if (!root) return;
+          
+          root.innerHTML = `
+            <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background-color: #09090b; color: #e4e4e7; font-family: sans-serif; padding: 20px;">
+                <div style="max-width: 500px; width: 100%; background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; color: #ef4444;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        <h1 style="font-size: 1.5rem; font-weight: bold; margin: 0;">Rendszerhiba</h1>
+                    </div>
+                    
+                    <p style="margin-bottom: 16px; line-height: 1.5; color: #a1a1aa;">Az alkalmazás indítása sikertelen.</p>
+                    
+                    ${missingFiles.length > 0 ? `
+                    <div style="background: #27272a; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                        <h3 style="font-size: 0.875rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; color: #fbbf24;">Hibás vagy hiányzó fájlok:</h3>
+                        <ul style="list-style: none; padding: 0; margin: 0; font-family: monospace; font-size: 0.9rem;">
+                            ${missingFiles.map(f => `<li style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #3f3f46;">
+                                <span>${f}</span>
+                                <span style="color: #ef4444;">HIBA</span>
+                            </li>`).join('')}
+                        </ul>
+                    </div>
+                    ` : ''}
+
+                    <div style="margin-bottom: 24px;">
+                        <button onclick="location.reload()" style="width: 100%; background: #059669; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: background 0.2s;">
+                            Oldal újratöltése
+                        </button>
+                    </div>
+                </div>
+            </div>
+          `;
       }
 
       async function boot() {
-        try {
-          // Load all files as text
-          const files = [
-            './constants.ts',
-            './types.ts',
-            './services/storage.ts',
-            './services/gemini.ts',
-            './App.tsx',
-            './index.tsx'
-          ];
-          
-          const sources = await Promise.all(files.map(f => loadTsx(f)));
-          
-          // Create a simple registry for our manual module system
-          const registry = {};
-          
-          // Helper to transform and execute
-          const run = (code, filename) => {
-            const output = Babel.transform(code, {
-              presets: ['react', 'typescript'],
-              filename: filename,
-              plugins: ['transform-modules-umd']
-            }).code;
-            
-            // Minimal CommonJS/UMD define shim
-            const exports = {};
-            const module = { exports };
-            const require = (id) => {
-              if (registry[id]) return registry[id];
-              // Map relative paths
-              if (id.startsWith('.')) {
-                // simple resolution for this flat structure
-                const name = id.replace('./', '').replace('.ts', '').replace('.tsx', '');
-                // Find matching file in registry keys (approximate)
-                const key = Object.keys(registry).find(k => k.includes(name));
-                if (key) return registry[key];
-              }
-              // Fallback to global (for React, etc defined in importmap - handled by browser usually, 
-              // but here we are in a closure. 
-              // Since we use UMD transform, external imports expect globals or AMD.
-              // We will rely on window globals for React/Lucide if importmap fails in this context,
-              // BUT actually, let's use a simpler approach: 
-              // We will inject the code into the DOM as type="text/babel" strips, but that has the MIME issue.
-            };
+        const missing = [];
+        const loadedCode = {};
 
-            // Evaluation strategy:
-            // Since we can't easily emulate a full module system in 5 lines,
-            // We will use the Babel 'transform-modules-systemjs' or just concat?
-            // NO. The easiest way for the user:
-            // We will fetch the text and inject it as a script tag with NO src, just innerHTML.
-            // But we need to handle imports.
-            
-            // PLAN B: The "Single HTML" approach is best, but for this live view:
-            // We'll let Babel Standalone handle it via data-plugins, but we fetch the content manually.
-          };
-          
-          // simpler approach:
-          // We fetch the content, create <script type="text/babel" data-type="module"> element,
-          // set innerHTML to the fetched content, and append to body.
-          // We must do it in order or use modules.
-          
-          // Since the files use "import ... from './file'", they must be served.
-          // If server fails MIME, we can't use standard ES modules easily without a blob URL.
-          
-          // Solution: Blob URLs for local files.
-          const modules = {};
-          
-          for (let i = 0; i < files.length; i++) {
-             const path = files[i];
-             const content = sources[i];
-             // Rewrite imports to relative blob URLs if possible? Hard.
-             
-             // Let's try the simplest fix for "MIME type" on shared hosts:
-             // It's usually just missing .tsx mime.
-             // We can rename them to .js conceptually in the browser.
-          }
-        } catch(e) { console.error(e); }
+        const fetchWithTimeout = async (url, ms = 5000) => {
+             const controller = new AbortController();
+             const id = setTimeout(() => controller.abort(), ms);
+             try {
+               const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
+               clearTimeout(id);
+               return response;
+             } catch (error) {
+               clearTimeout(id);
+               throw error;
+             }
+        };
+
+        for (const path of CRITICAL_FILES) {
+            updateStatus("Fájl letöltése:", path);
+            try {
+                const res = await fetchWithTimeout(path);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const text = await res.text();
+                
+                if (path.endsWith('.ts') || path.endsWith('.tsx')) {
+                    if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
+                        throw new Error("Invalid content type (got HTML instead of Code)");
+                    }
+                }
+                
+                loadedCode[path] = text;
+            } catch (e) {
+                console.warn(`Failed to load ${path}:`, e);
+                missing.push(path);
+            }
+        }
+
+        if (missing.length > 0) {
+            renderErrorScreen(missing);
+        } else {
+            try {
+                updateStatus("Fájlok feldolgozása...");
+                for (const path of CRITICAL_FILES) {
+                    if (path.endsWith('.ts') || path.endsWith('.tsx')) {
+                        registerModule(path, loadedCode[path]);
+                    }
+                }
+                
+                updateStatus("Alkalmazás indítása...");
+                
+                if (!window.React || !window.ReactDOM) {
+                     throw new Error("React könyvtár nem töltődött be.");
+                }
+
+                customRequire('./index.tsx');
+            } catch (compileError) {
+                console.error(compileError);
+                const root = document.getElementById('root');
+                root.innerHTML = `<div style="padding: 20px; color: #ef4444; font-family: sans-serif; background:#09090b; min-height:100vh;">
+                    <h1>Kritikus Hiba Indításkor</h1>
+                    <p style="margin-bottom:15px">${compileError.message}</p>
+                    <pre style="background: #18181b; padding: 15px; border-radius: 8px; overflow: auto; font-size: 0.8em; color: #a1a1aa;">${compileError.stack}</pre>
+                    <button onclick="location.reload()" style="margin-top:20px; background: #27272a; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">Újratöltés</button>
+                </div>`;
+            }
+        }
       }
+
+      window.onload = boot;
     </script>
     
-    <!-- 
-      ROBUST LOADING STRATEGY: 
-      We use a script that overrides the fetch for the specific .tsx files 
-      or we accept that we need to use the "Single HTML Download" feature for production.
-      For now, we try standard loading, but we add a fallback message in the root.
-    -->
-    <script type="text/babel" data-type="module" src="./index.tsx"></script>
+    <!-- Load React Globals -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script> 
     
     <script>
-      // Error fallback
-      window.addEventListener('error', (e) => {
-        if (e.message.includes('MIME') || e.message.includes('module')) {
-           const root = document.getElementById('root');
-           if(root && !root.hasChildNodes()) {
-             root.innerHTML = `
-               <div style="padding:20px; color:white; font-family:sans-serif;">
-                 <h1>Loading Error (MIME Type)</h1>
-                 <p>Your web server is not serving .tsx files correctly.</p>
-                 <p><strong>Solution:</strong> Please create a file named <code>.htaccess</code> in this folder with the following content:</p>
-                 <pre style="background:#333; padding:10px;">AddType text/javascript .tsx .ts</pre>
-               </div>
-             `;
-           }
-        }
-      });
+        window.React = React;
+        window.ReactDOM = ReactDOM;
+        
+        // Capture the real lucide library before we overwrite the global for the proxy
+        const realLucide = window.lucide;
+
+        window.lucide = new Proxy({}, {
+            get: (target, prop) => {
+                // Check if the icon exists in the library
+                if (realLucide && realLucide.icons && realLucide.icons[prop]) {
+                    return (props) => {
+                         try {
+                            // Extract common props
+                            const { color, size, strokeWidth, className, ...rest } = props || {};
+                            
+                            // Map React props to SVG attributes
+                            // Lucide default attrs are usually: width=24, height=24, fill=none, stroke=currentColor, stroke-width=2, stroke-linecap=round, stroke-linejoin=round
+                            
+                            // Create SVG element using vanilla lucide
+                            const svgElement = realLucide.createElement(realLucide.icons[prop]);
+                            
+                            // Apply overrides
+                            if (color) svgElement.setAttribute('stroke', color);
+                            if (size) {
+                                svgElement.setAttribute('width', size);
+                                svgElement.setAttribute('height', size);
+                            }
+                            if (strokeWidth) svgElement.setAttribute('stroke-width', strokeWidth);
+                            if (className) svgElement.setAttribute('class', `lucide lucide-${prop} ${className}`);
+                            
+                            // Apply rest props
+                            Object.keys(rest).forEach(key => {
+                                svgElement.setAttribute(key, rest[key]);
+                            });
+
+                            return React.createElement('span', {
+                                style: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
+                                dangerouslySetInnerHTML: { __html: svgElement.outerHTML }
+                            });
+                         } catch (e) {
+                             console.error("Icon render error for", prop, e);
+                             return React.createElement('span', {}, prop);
+                         }
+                    };
+                }
+                // Fallback
+                return () => React.createElement('span', {}, prop);
+            }
+        });
     </script>
   </body>
 </html>

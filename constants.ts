@@ -72,7 +72,15 @@ export const DEFAULT_QUESTIONS: Question[] = [
 
 export const INITIAL_DATA: AppData = {
   questions: DEFAULT_QUESTIONS,
-  entries: []
+  entries: [],
+  settings: {
+    categoryConfigs: {
+        [Category.DAILY]: { viewMode: 'grid' },
+        [Category.WEEKLY]: { viewMode: 'grid', includeDaily: false },
+        [Category.MONTHLY]: { viewMode: 'grid', includeDaily: false, includeWeekly: false },
+        [Category.YEARLY]: { viewMode: 'grid', includeDaily: false, includeWeekly: false, includeMonthly: false },
+    }
+  }
 };
 
 export const CATEGORY_LABELS: Record<Category, string> = {
@@ -80,6 +88,20 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   [Category.WEEKLY]: 'Heti',
   [Category.MONTHLY]: 'Havi',
   [Category.YEARLY]: 'Éves',
+};
+
+export const CATEGORY_COLORS: Record<Category, string> = {
+    [Category.DAILY]: 'bg-emerald-500',
+    [Category.WEEKLY]: 'bg-blue-500',
+    [Category.MONTHLY]: 'bg-purple-500',
+    [Category.YEARLY]: 'bg-amber-500',
+};
+
+export const CATEGORY_BORDER_COLORS: Record<Category, string> = {
+    [Category.DAILY]: 'border-l-emerald-500',
+    [Category.WEEKLY]: 'border-l-blue-500',
+    [Category.MONTHLY]: 'border-l-purple-500',
+    [Category.YEARLY]: 'border-l-amber-500',
 };
 
 // Simple hardcoded password for demo purposes. 
