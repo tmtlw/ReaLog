@@ -1,14 +1,21 @@
+
 <!DOCTYPE html>
 <html lang="hu">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Grind Napló</title>
+    <title>ReaLog</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#10b981" />
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3238/3238016.png" />
     
     <!-- External Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
     <!-- Leaflet for Atlas Mode -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
@@ -16,6 +23,11 @@
 
     <!-- Custom Styles -->
     <link rel="stylesheet" href="./style.css" />
+    
+    <!-- Fonts: Inter, JetBrains Mono, Lobster -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&family=Lobster&display=swap" rel="stylesheet">
 
 <script type="importmap">
 {
@@ -24,7 +36,7 @@
     "react": "https://aistudiocdn.com/react@^19.2.1",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
     "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.31.0"
+    "@google/genai": "https://esm.sh/@google/genai@^1.33.0"
   }
 }
 </script>
@@ -41,6 +53,20 @@
         </div>
     </div>
     
+    <!-- PWA Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js')
+            .then((registration) => {
+              console.log('ServiceWorker registration successful with scope: ', registration.scope);
+            }, (err) => {
+              console.log('ServiceWorker registration failed: ', err);
+            });
+        });
+      }
+    </script>
+
     <!-- Client-Side Module Loader & System Check -->
     <script>
       // Global Error Handler for initial boot phase
@@ -71,16 +97,23 @@
         './src/constants.ts',
         './src/changelog.ts',
         
+        // Languages
+        './src/langs/hu.ts',
+        './src/langs/en.ts',
+        './src/services/i18n.ts',
+
         // Services
         './src/services/storage.ts',
-        './src/services/gemini.ts',
         
         // Constants
         './src/constants/theme.ts',
+        './src/constants/fonts.ts',
         './src/constants/serverTemplates.ts',
         
         // UI
         './src/components/ui/index.tsx',
+        './src/components/ui/RichTextEditor.tsx',
+        './src/components/ui/WeatherRenderer.tsx',
         
         // Layout
         './src/components/layout/StatusBar.tsx',
@@ -95,12 +128,17 @@
         './src/components/views/CalendarView.tsx',
         './src/components/views/QuestionManager.tsx',
         './src/components/views/EntryList.tsx',
+        './src/components/views/StatsView.tsx',
+        './src/components/views/TagManager.tsx',
+        './src/components/views/StreakView.tsx',
         
         // Modals
         './src/components/modals/ExportModal.tsx',
         './src/components/modals/SettingsModal.tsx',
         './src/components/modals/DeployModal.tsx',
-        './src/components/modals/StorageDebugMenu.tsx'
+        './src/components/modals/ThemeEditorModal.tsx',
+        './src/components/modals/StorageDebugMenu.tsx',
+        './src/components/modals/TemplateModal.tsx'
       ];
 
       function updateStatus(msg, detail = "") {
@@ -169,7 +207,6 @@
         if (id === 'react') return window.React;
         if (id === 'react-dom/client') return window.ReactDOM;
         if (id === 'lucide-react') return window.lucide;
-        if (id === '@google/genai') return { GoogleGenAI: class { constructor(){console.warn("GenAI mock");} models={generateContent:async()=>({text:"AI Disabled"})}; } };
 
         // 2. Resolve internal path
         let resolvedIds = [];
@@ -331,10 +368,21 @@
                              if (!modules['./constants.ts']) registerModule('./constants.ts', loadedCode[path]);
                              if (!modules['./src/constants.ts']) registerModule('./src/constants.ts', loadedCode[path]);
                         }
+                        if (path.includes('i18n.ts')) {
+                             if (!modules['./services/i18n.ts']) registerModule('./services/i18n.ts', loadedCode[path]);
+                             if (!modules['./src/services/i18n.ts']) registerModule('./src/services/i18n.ts', loadedCode[path]);
+                        }
                     }
                 }
                 
                 updateStatus("Alkalmazás indítása...");
+                
+                // Auto-load languages
+                Object.keys(modules).forEach(key => {
+                    if ((key.includes('/langs/') || key.includes('/langs\\')) && !key.endsWith('index.tsx') && !key.endsWith('index.ts')) {
+                        try { loadModule(key); } catch(e) { console.warn("Nyelvi fájl automatikus betöltése sikertelen: " + key, e); }
+                    }
+                });
                 
                 if (!window.React || !window.ReactDOM) {
                      throw new Error("React könyvtár nem töltődött be.");

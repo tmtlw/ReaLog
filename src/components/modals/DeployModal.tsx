@@ -1,12 +1,13 @@
+
 import React, { useState } from 'react';
 import { Server, X, RefreshCw, Code, Copy, AlertTriangle } from 'lucide-react';
 import { Button, Card } from '../ui';
 import { SERVER_CODE_JSCRIPT, SERVER_CODE_PHP, SERVER_CODE_HTACCESS_PHP, SERVER_CODE_HTACCESS_NODE } from '../../constants/serverTemplates';
 import { DEFAULT_QUESTIONS } from '../../constants';
 
-const APP_VERSION = "2.9";
+const APP_VERSION = "4.4.1";
 
-const DeployModal: React.FC<{ onClose: () => void, themeClasses: any }> = ({ onClose, themeClasses }) => {
+const DeployModal: React.FC<{ onClose: () => void, themeClasses: any, t: (key: string) => string }> = ({ onClose, themeClasses, t }) => {
     const [isZipping, setIsZipping] = useState(false);
     const [activeTab, setActiveTab] = useState<'install' | 'files'>('install');
     const [serverType, setServerType] = useState<'nodejs' | 'php'>('php');
@@ -19,123 +20,64 @@ const DeployModal: React.FC<{ onClose: () => void, themeClasses: any }> = ({ onC
         try {
             // @ts-ignore
             if (typeof window.JSZip === 'undefined') {
-                alert("JSZip könyvtár nem töltődött be. Ellenőrizd az internetkapcsolatot és frissíts.");
+                alert("JSZip library not loaded.");
                 setIsZipping(false);
                 return;
             }
 
             // @ts-ignore
             const zip = new window.JSZip();
-            
-            const files = [
-                // Root files
-                'index.html', 
-                'package.json', 
-                'metadata.json', 
-                'style.css',
-                
-                // Source root files
-                'src/index.tsx', 
-                'src/types.ts', 
-                'src/constants.ts', 
-                'src/App.tsx',
-                
-                // Services
-                'src/services/storage.ts',
-                'src/services/gemini.ts',
-                
-                // Constants
-                'src/constants/theme.ts', 
-                'src/constants/serverTemplates.ts',
-                
-                // Components - UI
-                'src/components/ui/index.tsx',
-                
-                // Components - Layout
-                'src/components/layout/StatusBar.tsx',
-                'src/components/layout/Navbar.tsx',
-                
-                // Components - Forms
-                'src/components/forms/EntryEditor.tsx',
-                
-                // Components - Views
-                'src/components/views/AtlasView.tsx', 
-                'src/components/views/GalleryView.tsx', 
-                'src/components/views/CalendarView.tsx', 
-                'src/components/views/QuestionManager.tsx',
-                'src/components/views/EntryList.tsx',
-                
-                // Components - Modals
-                'src/components/modals/ExportModal.tsx', 
-                'src/components/modals/SettingsModal.tsx',
-                'src/components/modals/DeployModal.tsx', 
-                'src/components/modals/StorageDebugMenu.tsx'
-            ];
-            
-            const failedFiles: string[] = [];
             // @ts-ignore
             const sourceCache = window.__SOURCE_CACHE__ || {};
+            
+            // Get all files loaded by the system + index.html
+            // This ensures new files added to index.html are automatically included
+            const allLoadedFiles = Object.keys(sourceCache);
+            const filesToZip = Array.from(new Set(['index.html', ...allLoadedFiles]));
+            
+            const failedFiles: string[] = [];
 
-            await Promise.all(files.map(async (f) => {
+            await Promise.all(filesToZip.map(async (f) => {
                 try {
-                    const ts = Date.now();
-                    const zipPath = f; // Store in zip with original structure (e.g. src/App.tsx)
+                    let content = sourceCache[f];
                     
-                    // Try to retrieve from global cache first (avoids 404s for compiled files)
-                    // Cache keys usually start with ./
-                    const cacheKey = f.startsWith('./') ? f : `./${f}`;
-                    if (sourceCache[cacheKey]) {
-                        zip.file(zipPath, sourceCache[cacheKey]);
-                        return;
-                    }
+                    // If content is not in cache (e.g. index.html or fetched directly), try to fetch it
+                    if (!content) {
+                        const strategies = [f];
+                        if (f === 'index.html') {
+                            strategies.push('./index.html');
+                            strategies.push(window.location.pathname.split('/').pop() || 'index.html');
+                        } else if (!f.startsWith('./') && !f.startsWith('/')) {
+                            strategies.push(`./${f}`);
+                        }
 
-                    // Fallback to fetch
-                    const strategies = [
-                        f,
-                        `./${f}`,
-                        f.replace('src/', ''),
-                        `./${f.replace('src/', '')}`
-                    ];
-                    
-                    // Special case for index.html - might need root fetch
-                    if (f === 'index.html') {
-                        strategies.push('.');
-                        strategies.push(window.location.pathname.split('/').pop() || 'index.html');
-                    }
-
-                    const uniqueStrategies = [...new Set(strategies)];
-                    
-                    let content = null;
-                    for (const url of uniqueStrategies) {
-                        try {
-                            // Try with timestamp first to bust cache if possible
-                            let res = await fetch(`${url}?t=${ts}`);
-                            if (!res.ok) {
-                                // Retry without timestamp (some static servers dislike query params)
-                                res = await fetch(url); 
-                            }
-                            
-                            if (res.ok) {
-                                content = await res.text();
-                                // Basic validation: check if returned HTML instead of code (common SPA fallback issue)
-                                if ((f.endsWith('.ts') || f.endsWith('.tsx') || f.endsWith('.json')) && content.trim().startsWith('<!DOCTYPE')) {
-                                    content = null; // invalid
-                                    continue; // Try next strategy
+                        for (const url of strategies) {
+                            try {
+                                const res = await fetch(url);
+                                if (res.ok) {
+                                    content = await res.text();
+                                    // Protect against loading HTML for code files (404 fallback)
+                                    if ((f.endsWith('.ts') || f.endsWith('.tsx') || f.endsWith('.json')) && content.trim().startsWith('<!DOCTYPE')) {
+                                        content = null;
+                                        continue;
+                                    }
+                                    break;
                                 }
-                                break;
-                            }
-                        } catch(e) { /* ignore and try next */ }
+                            } catch(e) { }
+                        }
                     }
+
+                    // Normalize path for Zip (remove ./ prefix)
+                    const zipPath = f.startsWith('./') ? f.substring(2) : f;
 
                     if (content) {
                         zip.file(zipPath, content);
+                    } else if (zipPath === 'package.json') {
+                        // Fallback for package.json
+                        zip.file(zipPath, JSON.stringify({name: "realog", version: APP_VERSION, description: "ReaLog"}, null, 2));
                     } else {
-                        // Use hardcoded fallback for package.json if completely missing
-                        if (f === 'package.json') {
-                            zip.file(f, JSON.stringify({name: "grind-naplo", version: "2.0.0", description: "Grind Napló"}, null, 2));
-                        } else {
-                            throw new Error(`File not found`);
-                        }
+                        // Silent fail for non-critical assets, or log
+                        // console.warn(`Could not load ${f}`);
                     }
                 } catch(e) {
                     console.error(`Failed to load ${f}`, e);
@@ -143,29 +85,27 @@ const DeployModal: React.FC<{ onClose: () => void, themeClasses: any }> = ({ onC
                 }
             }));
 
-            if (failedFiles.length > 0) {
-                setErrorLog(prev => [...prev, ...failedFiles.map(f => `Sikertelen letöltés: ${f}`)]);
-            }
+            if (failedFiles.length > 0) setErrorLog(prev => [...prev, ...failedFiles.map(f => `${t('deploy.download_error')}: ${f}`)]);
 
-            // Add server files
             zip.file('api.jscript', SERVER_CODE_JSCRIPT);
             zip.file('api.php', SERVER_CODE_PHP);
-            zip.file('entries.json', '[]');
-            zip.file('settings.json', '{}');
+            
+            // Place defaults in ROOT. Server scripts will prioritize posts/questions.json if it exists.
             zip.file('questions.json', JSON.stringify(DEFAULT_QUESTIONS));
+            
             zip.file('.htaccess', serverType === 'php' ? SERVER_CODE_HTACCESS_PHP : SERVER_CODE_HTACCESS_NODE);
 
             const content = await zip.generateAsync({type:"blob"});
             const url = window.URL.createObjectURL(content);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `grind-naplo-v${APP_VERSION}-source.zip`;
+            a.download = `realog-v${APP_VERSION}-source.zip`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
         } catch(e: any) {
             console.error(e);
-            setErrorLog(prev => [...prev, `ZIP Hiba: ${e.message}`]);
+            setErrorLog(prev => [...prev, `${t('deploy.zip_error')}: ${e.message}`]);
         } finally {
             setIsZipping(false);
         }
@@ -173,72 +113,73 @@ const DeployModal: React.FC<{ onClose: () => void, themeClasses: any }> = ({ onC
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
-        alert("Vágólapra másolva!");
+        alert(t('deploy.clipboard_copied'));
     };
 
     return (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4 animate-fade-in">
             <Card themeClasses={themeClasses} className="w-full max-w-2xl p-0 shadow-2xl relative flex flex-col max-h-[90vh]">
                 <div className="flex items-center justify-between p-6 border-b border-white/10">
                     <div className="flex items-center gap-3">
                         <div className="p-3 bg-emerald-500/10 rounded-lg text-emerald-500"><Server className="w-6 h-6" /></div>
                         <div>
-                            <h3 className="text-xl font-bold">Grind Napló Telepítése</h3>
-                            <p className={`text-xs ${themeClasses.subtext}`}>Verzió {APP_VERSION} (Saját Szerver)</p>
+                            <h3 className="text-xl font-bold">{t('deploy.title')}</h3>
+                            <p className={`text-xs ${themeClasses.subtext}`}>v{APP_VERSION} ({t('deploy.subtitle')})</p>
                         </div>
                     </div>
                     <button onClick={onClose}><X className="w-5 h-5 opacity-50 hover:opacity-100" /></button>
                 </div>
 
                 <div className="flex border-b border-white/10">
-                    <button onClick={() => setActiveTab('install')} className={`flex-1 p-3 text-sm font-bold ${activeTab === 'install' ? 'bg-white/5 text-emerald-500 border-b-2 border-emerald-500' : 'opacity-60'}`}>Útmutató</button>
-                    <button onClick={() => setActiveTab('files')} className={`flex-1 p-3 text-sm font-bold ${activeTab === 'files' ? 'bg-white/5 text-emerald-500 border-b-2 border-emerald-500' : 'opacity-60'}`}>Szerver Fájlok</button>
+                    <button onClick={() => setActiveTab('install')} className={`flex-1 p-3 text-sm font-bold ${activeTab === 'install' ? 'bg-white/5 text-emerald-500 border-b-2 border-emerald-500' : 'opacity-60'}`}>{t('deploy.guide')}</button>
+                    <button onClick={() => setActiveTab('files')} className={`flex-1 p-3 text-sm font-bold ${activeTab === 'files' ? 'bg-white/5 text-emerald-500 border-b-2 border-emerald-500' : 'opacity-60'}`}>{t('deploy.files')}</button>
                 </div>
                 
                 <div className="p-6 overflow-y-auto">
                     {activeTab === 'install' ? (
                         <div className="space-y-6">
                             <div>
-                                <h4 className={`text-sm font-bold uppercase mb-2 ${themeClasses.accent}`}>Futtatás saját szerveren</h4>
+                                <h4 className={`text-sm font-bold uppercase mb-2 ${themeClasses.accent}`}>{t('deploy.manual_title')}</h4>
                                 <ol className={`text-sm space-y-2 list-decimal pl-4 ${themeClasses.subtext}`}>
-                                    <li>Készíts egy mappát a szerveren (pl. <code>/naplo</code>).</li>
-                                    <li>Töltsd le a teljes forráskódot (ZIP) és csomagold ki.</li>
-                                    <li>Ellenőrizd, hogy az <code>img</code> mappa létrejön-e, és írható-e (CHMOD 755/777).</li>
-                                    <li>
-                                        Döntsd el a backend típusát:
-                                        <ul className="list-disc pl-4 mt-1 opacity-80">
-                                            <li><strong>Node.js:</strong> Használd az <code>api.jscript</code> fájlt (CHMOD 755!) és a hozzá tartozó <code>.htaccess</code>-t.</li>
-                                            <li><strong>PHP:</strong> Használd az <code>api.php</code> fájlt és a PHP-hez való <code>.htaccess</code> kódot.</li>
-                                        </ul>
-                                    </li>
-                                    <li>Mentsd el a választott kódokat a "Szerver Fájlok" fülről a megfelelő fájlneveken.</li>
+                                    <li>{t('deploy.step_1')}</li>
+                                    <li>{t('deploy.step_2')}</li>
+                                    <li>{t('deploy.step_3')}</li>
+                                    <li>{t('deploy.step_4')}</li>
+                                    <li>{t('deploy.step_5')}</li>
                                 </ol>
-                                <p className="text-xs mt-2 italic opacity-70">Az adatok mostantól külön fájlokba (<code>entries.json</code>, <code>settings.json</code>) mentődnek a mappán belül.</p>
+                                <p className="text-xs mt-2 italic opacity-70">{t('deploy.note')}</p>
+                            </div>
+
+                            <div className="pt-4 border-t border-white/10">
+                                <h4 className={`text-sm font-bold uppercase mb-2 ${themeClasses.accent}`}>{t('deploy.lang_title')}</h4>
+                                <ol className={`text-sm space-y-2 list-decimal pl-4 ${themeClasses.subtext}`}>
+                                    <li>{t('deploy.lang_step_1')}</li>
+                                    <li>{t('deploy.lang_step_2')}</li>
+                                    <li>{t('deploy.lang_step_3')}</li>
+                                </ol>
                             </div>
 
                             <div className="pt-4 border-t border-white/10">
                                 <Button onClick={handleDownloadSource} themeClasses={themeClasses} className="w-full" disabled={isZipping}>
                                     {isZipping ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Code className="w-4 h-4" />}
-                                    {isZipping ? "Csomagolás..." : `Teljes Forráskód Letöltése v${APP_VERSION} (.zip)`}
+                                    {isZipping ? t('deploy.zipping') : t('deploy.download_btn')}
                                 </Button>
-                                <p className="text-[10px] text-center mt-2 opacity-50">Adatok (bejegyzések) nélkül</p>
+                                <p className="text-[10px] text-center mt-2 opacity-50">{t('deploy.no_data')}</p>
                                 
                                 {errorLog.length > 0 && (
                                     <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-300">
                                         <div className="flex items-center gap-2 font-bold mb-2 text-red-400">
-                                            <AlertTriangle className="w-4 h-4" /> Hibák a letöltés során
+                                            <AlertTriangle className="w-4 h-4" /> Error
                                         </div>
                                         <ul className="list-disc pl-4 space-y-1">
                                             {errorLog.map((err, i) => <li key={i}>{err}</li>)}
                                         </ul>
-                                        <p className="mt-2 opacity-70">Tipp: Frissítsd az oldalt és próbáld újra.</p>
                                     </div>
                                 )}
                             </div>
                         </div>
                     ) : (
                         <div className="space-y-6">
-                             {/* Backend Switcher */}
                              <div className="flex justify-center mb-6 bg-black/20 p-1 rounded-lg">
                                  <button 
                                     onClick={() => setServerType('nodejs')}
@@ -256,28 +197,26 @@ const DeployModal: React.FC<{ onClose: () => void, themeClasses: any }> = ({ onC
 
                              {serverType === 'nodejs' ? (
                                  <>
-                                     {/* API JSCRIPT */}
                                      <div>
                                         <div className="flex justify-between items-center mb-2">
                                             <label className={`text-sm font-bold uppercase ${themeClasses.accent}`}>api.jscript</label>
                                             <Button size="sm" variant="secondary" themeClasses={themeClasses} onClick={() => copyToClipboard(SERVER_CODE_JSCRIPT)}>
-                                                <Copy className="w-3 h-3" /> Másolás
+                                                <Copy className="w-3 h-3" /> {t('deploy.copy')}
                                             </Button>
                                         </div>
                                         <div className="relative">
                                             <pre className="bg-black/20 p-4 rounded-lg text-[10px] md:text-xs overflow-x-auto border border-white/10 max-h-48 overflow-y-auto">
                                                 <code>{SERVER_CODE_JSCRIPT}</code>
                                             </pre>
-                                            <div className="absolute top-2 right-2 text-[10px] bg-red-500/20 text-red-400 px-2 rounded">CHMOD 755 kötelező!</div>
+                                            <div className="absolute top-2 right-2 text-[10px] bg-red-500/20 text-red-400 px-2 rounded">{t('deploy.chmod_warning')}</div>
                                         </div>
                                      </div>
 
-                                     {/* HTACCESS NODE */}
                                      <div>
                                         <div className="flex justify-between items-center mb-2">
                                             <label className={`text-sm font-bold uppercase ${themeClasses.accent}`}>.htaccess (Node)</label>
                                             <Button size="sm" variant="secondary" themeClasses={themeClasses} onClick={() => copyToClipboard(SERVER_CODE_HTACCESS_NODE)}>
-                                                <Copy className="w-3 h-3" /> Másolás
+                                                <Copy className="w-3 h-3" /> {t('deploy.copy')}
                                             </Button>
                                         </div>
                                         <pre className="bg-black/20 p-4 rounded-lg text-[10px] md:text-xs overflow-x-auto border border-white/10">
@@ -287,12 +226,11 @@ const DeployModal: React.FC<{ onClose: () => void, themeClasses: any }> = ({ onC
                                  </>
                              ) : (
                                  <>
-                                     {/* API PHP */}
                                      <div>
                                         <div className="flex justify-between items-center mb-2">
                                             <label className="text-sm font-bold uppercase text-blue-400">api.php</label>
                                             <Button size="sm" variant="secondary" themeClasses={themeClasses} onClick={() => copyToClipboard(SERVER_CODE_PHP)}>
-                                                <Copy className="w-3 h-3" /> Másolás
+                                                <Copy className="w-3 h-3" /> {t('deploy.copy')}
                                             </Button>
                                         </div>
                                         <div className="relative">
@@ -302,12 +240,11 @@ const DeployModal: React.FC<{ onClose: () => void, themeClasses: any }> = ({ onC
                                         </div>
                                      </div>
 
-                                     {/* HTACCESS PHP */}
                                      <div>
                                         <div className="flex justify-between items-center mb-2">
                                             <label className="text-sm font-bold uppercase text-blue-400">.htaccess (PHP)</label>
                                             <Button size="sm" variant="secondary" themeClasses={themeClasses} onClick={() => copyToClipboard(SERVER_CODE_HTACCESS_PHP)}>
-                                                <Copy className="w-3 h-3" /> Másolás
+                                                <Copy className="w-3 h-3" /> {t('deploy.copy')}
                                             </Button>
                                         </div>
                                         <pre className="bg-black/20 p-4 rounded-lg text-[10px] md:text-xs overflow-x-auto border border-white/10">

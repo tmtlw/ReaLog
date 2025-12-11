@@ -9,7 +9,8 @@ const CalendarView: React.FC<{
     onDateChange: (d: Date) => void;
     onSelectEntry: (e: Entry) => void;
     themeClasses: any;
-}> = ({ entries, currentDate, onDateChange, onSelectEntry, themeClasses }) => {
+    t?: (key: string) => string;
+}> = ({ entries, currentDate, onDateChange, onSelectEntry, themeClasses, t }) => {
     // Determine days in month
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -32,7 +33,7 @@ const CalendarView: React.FC<{
             return entryDate.getFullYear() === year && 
                    entryDate.getMonth() === month && 
                    entryDate.getDate() === d;
-        });
+        }).sort((a, b) => a.timestamp - b.timestamp); // Sort by time ascending for the list
     };
 
     return (
@@ -41,7 +42,7 @@ const CalendarView: React.FC<{
             <div className={`flex items-center justify-between mb-4 p-4 rounded-lg border ${themeClasses.card}`}>
                 <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-black/5 rounded-full"><ChevronLeft className="w-5 h-5" /></button>
                 <div className="font-bold text-lg capitalize">
-                    {currentDate.toLocaleDateString('hu-HU', { month: 'long', year: 'numeric' })}
+                    {currentDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
                 </div>
                 <button onClick={() => changeMonth(1)} className="p-2 hover:bg-black/5 rounded-full"><ChevronRight className="w-5 h-5" /></button>
             </div>
@@ -65,21 +66,31 @@ const CalendarView: React.FC<{
                     return (
                         <div 
                             key={day} 
-                            className={`aspect-square rounded-lg border relative flex flex-col items-center justify-start pt-2 transition-all cursor-pointer hover:border-emerald-500/50 ${current ? 'bg-emerald-500/10 border-emerald-500' : themeClasses.card}`}
+                            className={`aspect-square rounded-lg border relative flex flex-col pt-1 transition-all cursor-pointer hover:border-emerald-500/50 overflow-hidden ${current ? 'bg-emerald-500/10 border-emerald-500' : themeClasses.card}`}
                             onClick={() => {
                                 if (dayEntries.length > 0) onSelectEntry(dayEntries[0]);
                             }}
                         >
-                            <span className={`text-xs font-bold ${current ? 'text-emerald-500' : 'opacity-70'}`}>{day}</span>
+                            <span className={`text-xs font-bold text-center block mb-1 ${current ? 'text-emerald-500' : 'opacity-70'}`}>{day}</span>
                             
-                            <div className="flex flex-wrap gap-1 justify-center mt-1 px-1">
+                            {/* List View inside Cell */}
+                            <div className="flex-1 overflow-y-auto px-1 pb-1 space-y-1 no-scrollbar">
                                 {dayEntries.map(e => (
-                                    <div key={e.id} className={`w-1.5 h-1.5 rounded-full ${CATEGORY_COLORS[e.category]}`} title={e.title || e.dateLabel}></div>
+                                    <div 
+                                        key={e.id} 
+                                        onClick={(ev) => { ev.stopPropagation(); onSelectEntry(e); }}
+                                        className={`text-[9px] leading-tight p-1 rounded truncate hover:bg-white/10 transition-colors ${e.isDraft ? 'italic opacity-70' : ''}`}
+                                        title={`${new Date(e.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - ${e.title || e.dateLabel}`}
+                                    >
+                                        <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1 ${CATEGORY_COLORS[e.category]}`}></span>
+                                        <span className="opacity-70 mr-1">{new Date(e.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                                        <span className="font-medium">{e.title || e.dateLabel}</span>
+                                    </div>
                                 ))}
                             </div>
                             
-                            {dayEntries.length > 0 && dayEntries[0].photo && (
-                                <div className="absolute bottom-1 right-1 w-2 h-2 bg-blue-400 rounded-full opacity-50" title="Van fotó"></div>
+                            {dayEntries.length > 0 && dayEntries.some(e => e.photo) && (
+                                <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-blue-400 rounded-full opacity-50 pointer-events-none"></div>
                             )}
                         </div>
                     );

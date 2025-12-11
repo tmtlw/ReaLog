@@ -1,0 +1,22 @@
+
+{
+  "name": "ReaLog",
+  "short_name": "ReaLog",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#10b981",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3238/3238016.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3238/3238016.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

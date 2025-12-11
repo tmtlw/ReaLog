@@ -9,6 +9,7 @@ const AtlasView: React.FC<{
   themeClasses: any;
   showAll?: boolean;
   isAdmin?: boolean;
+  t?: (key: string) => string;
 }> = ({ entries, activeCategory, onSelectEntry, themeClasses, showAll, isAdmin }) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<any>(null);

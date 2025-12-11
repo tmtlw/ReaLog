@@ -1,15 +1,20 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Book, Lock, Plus, Trash2, X, ChevronRight, Layout, RefreshCw,
-  Calendar, List, Grid as GridIcon,
-  Server, MapPin, Eye, Search, ChevronLeft, Map as MapIcon,
-  ThermometerSun, PenTool, Images, Globe
+  Book, Lock, Unlock, PenTool, Download, Upload, 
+  Plus, Trash2, Save, X, ChevronRight, Layout, RefreshCw,
+  Image as ImageIcon, Cloud, Calendar, List, Grid as GridIcon,
+  Smile, Settings, Info, Server, MapPin, Eye, EyeOff, Palette, Search, ChevronLeft, Map as MapIcon,
+  ThermometerSun, Menu, Code, LogOut, CheckCircle2, AlertCircle, CloudLightning, HardDrive,
+  Wifi, WifiOff, Database, Activity, ChevronUp, Terminal, Copy, FileText, FileCode, User,
+  Globe, Layers, Shield, ShieldAlert, Clock, Bold, Italic, Underline, Link as LinkIcon, AlignLeft,
+  Recycle, Hash, PieChart, CalendarClock, Filter, Edit2
 } from 'lucide-react';
-
-import { AppData, Category, Entry, ThemeOption, CategoryConfig } from './types';
-import { CATEGORY_LABELS, DEMO_PASSWORD, INITIAL_DATA, DEFAULT_QUESTIONS, CATEGORY_COLORS, DEFAULT_MOODS } from './constants';
-import { THEMES } from './constants/theme';
+import { AppData, Category, Entry, WeatherData, ThemeOption, CategoryConfig, PublicConfig, Template, WeatherIconPack } from './types';
+import { CATEGORY_LABELS, DEMO_PASSWORD, INITIAL_DATA, DEFAULT_QUESTIONS, CATEGORY_COLORS, CATEGORY_BORDER_COLORS } from './constants';
+import { THEMES, generateCustomTheme } from './constants/theme';
 import * as StorageService from './services/storage';
+import { getTranslation, Language } from './services/i18n';
 
 // Sub-components
 import { Button, Card, Input } from './components/ui';
@@ -21,61 +26,174 @@ import AtlasView from './components/views/AtlasView';
 import GalleryView from './components/views/GalleryView';
 import CalendarView from './components/views/CalendarView';
 import QuestionManager from './components/views/QuestionManager';
+import StatsView from './components/views/StatsView';
+import TagManager from './components/views/TagManager';
+import StreakView from './components/views/StreakView';
+import WeatherRenderer from './components/ui/WeatherRenderer'; // New Import
 
 // Modals
 import ExportModal from './components/modals/ExportModal';
 import SettingsModal from './components/modals/SettingsModal';
 import DeployModal from './components/modals/DeployModal';
+import ThemeEditorModal from './components/modals/ThemeEditorModal';
 import StorageDebugMenu from './components/modals/StorageDebugMenu';
 
 export default function App() {
+  // --- CORE DATA STATE ---
   const [data, setData] = useState<AppData>(INITIAL_DATA);
-  const [activeCategory, setActiveCategory] = useState<Category>(Category.DAILY);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAppLoading, setIsAppLoading] = useState(true);
   
+  // --- UI STATE ---
+  const [activeCategory, setActiveCategory] = useState<Category>(Category.DAILY);
   const [currentTheme, setCurrentTheme] = useState<ThemeOption>('dark');
   const [themeClasses, setThemeClasses] = useState(THEMES.dark);
+  const [viewMode, setViewMode] = useState<'grid' | 'timeline' | 'calendar' | 'atlas' | 'gallery'>('grid');
+  const [globalView, setGlobalView] = useState<'none' | 'atlas' | 'gallery' | 'tags' | 'onThisDay' | 'trash' | 'stats' | 'streak'>('none');
+  const [activeTab, setActiveTab] = useState<'entries' | 'questions'>('entries');
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  
+  // --- INFINITE SCROLL STATE ---
+  const [visibleCount, setVisibleCount] = useState(12);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  const [serverMode, setServerMode] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'error' | 'success'>('idle');
-  const [lastSyncTime, setLastSyncTime] = useState<number | null>(null);
-  const [systemMessage, setSystemMessage] = useState<string>("");
-  const [showStorageMenu, setShowStorageMenu] = useState(false);
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // --- SEARCH & FILTER ---
+  const [searchQuery, setSearchQuery] = useState("");
+  const [calendarDate, setCalendarDate] = useState(new Date());
+  // Intelligent Filters
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterStart, setFilterStart] = useState("");
+  const [filterEnd, setFilterEnd] = useState("");
+  const [filterMood, setFilterMood] = useState("");
+  const [filterHasPhoto, setFilterHasPhoto] = useState(false);
 
+  // --- EDITOR & MODAL STATE ---
+  const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null); 
+  const [isEditing, setIsEditing] = useState(false); 
+  const [draftEntry, setDraftEntry] = useState<Partial<Entry>>({}); 
+  const [isDirty, setIsDirty] = useState(false); 
+  const [locationParts, setLocationParts] = useState<string[]>([]); 
+  
+  // --- TAG MANAGER STATE ---
+  const [showTagManager, setShowTagManager] = useState(false);
+
+  // --- MODALS STATE ---
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [passwordInput, setPasswordInput] = useState("");
   const [showExportModal, setShowExportModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showDeployModal, setShowDeployModal] = useState(false);
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showThemeEditor, setShowThemeEditor] = useState(false);
+  const [showStorageMenu, setShowStorageMenu] = useState(false);
 
-  const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null); 
-  const [passwordInput, setPasswordInput] = useState("");
-  const [viewMode, setViewMode] = useState<'grid' | 'timeline' | 'calendar' | 'atlas' | 'gallery'>('grid');
-  const [globalView, setGlobalView] = useState<'none' | 'atlas' | 'gallery'>('none');
+  // --- SERVER / SYNC STATE ---
+  const [serverMode, setServerMode] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'error' | 'success' | 'auto_syncing' | 'auto_success'>('idle');
+  const [lastSyncTime, setLastSyncTime] = useState<number | null>(null);
+  const [systemMessage, setSystemMessage] = useState<string>("");
   
-  const [searchQuery, setSearchQuery] = useState("");
-  const [calendarDate, setCalendarDate] = useState(new Date());
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoSaveIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [currentEntry, setCurrentEntry] = useState<Partial<Entry>>({});
-  const [activeTab, setActiveTab] = useState<'entries' | 'questions'>('entries');
-  const [locationParts, setLocationParts] = useState<string[]>([]);
+  // --- I18N ---
+  const currentLang: Language = data.settings?.language || 'hu';
+  const t = (key: string, params?: any) => {
+      let text = getTranslation(currentLang, key);
+      if (params) {
+          Object.keys(params).forEach(k => {
+              text = text.replace(`{${k}}`, params[k]);
+          });
+      }
+      return text;
+  };
+  const getCatLabel = (cat: Category) => t(`category.${cat.toLowerCase()}`);
+  const appName = data.settings?.userName ? `${data.settings.userName}Log` : 'ReaLog';
 
-  // Dynamic App Name Logic
-  const appName = data.settings?.userName || 'Grind Napló';
+  // --- DERIVED STATE ---
+  const showStats = data.settings?.enableStats !== false; // Default true if undefined
+  const showGamification = data.settings?.enableGamification !== false; // Default true
+  const weatherPack: WeatherIconPack = data.settings?.weatherIconPack || 'outline'; // Default Outline
 
+  // Calculate Streak
+  const getStreakInfo = () => {
+      const dates = data.entries
+          .filter(e => !e.isTrashed && e.timestamp <= Date.now())
+          .map(e => new Date(e.timestamp).setHours(0,0,0,0))
+          .sort((a,b) => b-a);
+      
+      const uniqueDates = [...new Set(dates)];
+      if (uniqueDates.length === 0) return { current: 0, longest: 0 };
+
+      // Current Streak
+      const today = new Date().setHours(0,0,0,0);
+      const yesterday = today - 86400000;
+      let streak = 0;
+      
+      if (uniqueDates[0] === today || uniqueDates[0] === yesterday) {
+          streak = 1;
+          let prevDate = uniqueDates[0];
+          for (let i = 1; i < uniqueDates.length; i++) {
+              const currentDate = uniqueDates[i] as number;
+              if (prevDate - currentDate === 86400000) { 
+                  streak++;
+                  prevDate = currentDate;
+              } else {
+                  break;
+              }
+          }
+      }
+
+      // Longest Streak
+      let longest = 0;
+      let currentSeq = 1;
+      
+      // Sort ascending for longest calculation
+      const sortedAsc = [...uniqueDates].sort((a,b) => a-b);
+      
+      if(sortedAsc.length > 0) longest = 1;
+
+      for (let i = 1; i < sortedAsc.length; i++) {
+          if (sortedAsc[i] - sortedAsc[i-1] === 86400000) {
+              currentSeq++;
+          } else {
+              if (currentSeq > longest) longest = currentSeq;
+              currentSeq = 1;
+          }
+      }
+      if (currentSeq > longest) longest = currentSeq;
+
+      return { current: streak, longest };
+  };
+  
+  const streakInfo = getStreakInfo();
+
+  // --- INITIALIZATION ---
   useEffect(() => {
     const init = async () => {
         setIsAppLoading(true);
         const local = StorageService.loadData();
         if (local.settings?.theme) setCurrentTheme(local.settings.theme);
         
-        // Restore session
         if (StorageService.checkAuthSession()) {
             setIsAdmin(true);
         }
+
+        // Setup background sync listener
+        StorageService.setupBackgroundSync(
+            () => { setSyncStatus('syncing'); setSystemMessage("Szinkronizálás..."); },
+            (success) => {
+                if(success) {
+                    setSyncStatus('success'); 
+                    setSystemMessage("");
+                    setLastSyncTime(Date.now());
+                    setTimeout(() => setSyncStatus('idle'), 2000);
+                } else {
+                    setSyncStatus('error');
+                    setSystemMessage(t('server.offline_mode'));
+                }
+            }
+        );
 
         const status = await StorageService.checkServerStatus();
         if (status.online) {
@@ -83,18 +201,17 @@ export default function App() {
             setSyncStatus('syncing');
             const serverData = await StorageService.serverLoad();
             if (serverData) {
-                if (!serverData.questions || serverData.questions.length === 0) serverData.questions = DEFAULT_QUESTIONS;
+                if (!serverData.questions || serverData.questions.length === 0) {
+                    // Logic to reload questions based on default if missing
+                }
                 setData({ ...serverData, settings: { ...local.settings, ...serverData.settings } });
                 setSyncStatus('success');
                 setLastSyncTime(Date.now());
-                setSystemMessage("");
                 setIsAppLoading(false);
                 return;
             } else {
-                setSystemMessage("Adatlekérési hiba a szerverről!");
+                setSystemMessage(t('server.api_not_found'));
             }
-        } else {
-             console.log("Server Offline:", status.message, status.details);
         }
         
         setData(local);
@@ -103,12 +220,76 @@ export default function App() {
     init();
   }, []);
 
+  // Theme Application Logic
   useEffect(() => {
-      let target = currentTheme;
-      if (currentTheme === 'system') target = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      setThemeClasses(THEMES[target as keyof typeof THEMES] || THEMES.dark);
-      document.body.className = (THEMES[target as keyof typeof THEMES] || THEMES.dark).bg;
-  }, [currentTheme]);
+      let targetTheme = currentTheme;
+      if (currentTheme === 'system') targetTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+
+      if (targetTheme === 'custom') {
+          if (data.settings?.customTheme) {
+              const customClasses = generateCustomTheme(
+                  data.settings.customTheme.base, 
+                  data.settings.customTheme.accent as any
+              );
+              setThemeClasses(customClasses);
+              document.body.className = customClasses.bg;
+          } else {
+              setThemeClasses(THEMES.dark);
+              document.body.className = THEMES.dark.bg;
+          }
+      } else {
+          // @ts-ignore
+          const classes = THEMES[targetTheme] || THEMES.dark;
+          setThemeClasses(classes);
+          document.body.className = classes.bg;
+      }
+  }, [currentTheme, data.settings?.customTheme]); 
+
+  // Typography Injection
+  useEffect(() => {
+      const { fontFamily, fontSize, customFontName, customFontData } = data.settings?.typography || {};
+      
+      let styleTag = document.getElementById('app-typography') as HTMLStyleElement;
+      if (!styleTag) {
+          styleTag = document.createElement('style');
+          styleTag.id = 'app-typography';
+          document.head.appendChild(styleTag);
+      }
+
+      let css = '';
+      
+      // Font Size Base
+      if (fontSize) {
+          css += `:root { font-size: ${fontSize}px; } `;
+      }
+
+      // Font Family
+      if (fontFamily) {
+          const finalFamily = (fontFamily === 'Custom' && customFontName) ? customFontName : fontFamily;
+          
+          if (fontFamily === 'Custom' && customFontName && customFontData) {
+              css += `@font-face { font-family: '${customFontName}'; src: url('${customFontData}') format('truetype'); } `;
+          } else if (fontFamily !== 'Custom') {
+              // Inject Google Font link if needed
+              const linkId = 'google-font-link';
+              let link = document.getElementById(linkId) as HTMLLinkElement;
+              if (!link) {
+                  link = document.createElement('link');
+                  link.id = linkId;
+                  link.rel = 'stylesheet';
+                  document.head.appendChild(link);
+              }
+              // Basic weights
+              link.href = `https://fonts.googleapis.com/css2?family=${fontFamily.replace(/ /g, '+')}:wght@400;700&display=swap`;
+          }
+
+          // Aggressive global injection - Apply to ALL elements to override Tailwind specific classes
+          css += `* { font-family: '${finalFamily}', sans-serif !important; } `;
+      }
+
+      styleTag.textContent = css;
+
+  }, [data.settings?.typography]);
 
   useEffect(() => {
       if (activeCategory) {
@@ -118,39 +299,100 @@ export default function App() {
       }
   }, [activeCategory, data.settings?.categoryConfigs]);
 
+  // --- SAVE & PERSISTENCE ---
   useEffect(() => {
-    StorageService.saveData(data); // Local save always happens
+    StorageService.saveData(data); // Always save local
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     if(isAppLoading) return;
 
-    // Only save to Server if Admin is logged in
     if (serverMode && isAdmin) {
-        setSyncStatus('syncing');
+        // Detect if this is an auto-save or manual save
+        const isAuto = syncStatus === 'auto_syncing';
+        if (!isAuto) setSyncStatus('syncing');
+
         saveTimeoutRef.current = setTimeout(async () => {
             try {
-                await StorageService.serverSave(data);
-                setSyncStatus('success');
+                const response = await StorageService.serverSave(data);
+                
+                if (response && response.message && response.message !== 'success') {
+                     setSystemMessage(`PHP: ${response.message}`);
+                } else if (typeof response === 'string' && response.includes('<b>')) {
+                     setSystemMessage("PHP Error Log Detected");
+                }
+
+                setSyncStatus(isAuto ? 'auto_success' : 'success');
                 setLastSyncTime(Date.now());
-                setSystemMessage("");
+                if (!systemMessage.startsWith("PHP")) setSystemMessage("");
                 setTimeout(() => setSyncStatus('idle'), 2000);
-            } catch (e) {
-                setSyncStatus('error');
-                setSystemMessage("Szerver mentési hiba!");
+            } catch (e: any) {
+                // If error is strictly offline related, warn but don't panic
+                if (e.message.includes('Offline')) {
+                    setSystemMessage(t('server.offline_mode'));
+                    setSyncStatus('idle'); // Back to idle (dirty state is handled in storage)
+                } else {
+                    setSyncStatus('error');
+                    setSystemMessage(`${t('status.save_error')} ${e.message || ''}`);
+                }
             }
         }, 1000);
-    } 
+    }
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, [data, serverMode, isAdmin]);
 
-  const getFilteredEntries = () => {
-      let entries = data.entries;
+  // --- AUTO SAVE LOGIC (Every Minute) ---
+  useEffect(() => {
+      if (isEditing && draftEntry.id) {
+          if (autoSaveIntervalRef.current) clearInterval(autoSaveIntervalRef.current);
+          autoSaveIntervalRef.current = setInterval(() => {
+              performAutoSave();
+          }, 60000); // 1 minute
+      } else {
+          if (autoSaveIntervalRef.current) clearInterval(autoSaveIntervalRef.current);
+      }
+      return () => { if (autoSaveIntervalRef.current) clearInterval(autoSaveIntervalRef.current); };
+  }, [isEditing, draftEntry]); 
 
-      if (!isAdmin) {
-          entries = entries.filter(e => !e.isPrivate);
+  // --- INFINITE SCROLL LOGIC ---
+  useEffect(() => {
+      // Reset visible count on filter/category changes
+      setVisibleCount(12);
+  }, [activeCategory, globalView, searchQuery, filterStart, filterEnd, filterMood, filterHasPhoto]);
+
+  const filteredEntriesAll = React.useMemo(() => {
+      // Re-use logic to get all filtered entries
+      let entries = data.entries;
+      
+      // Privacy Filter
+      if (!isAdmin) entries = entries.filter(e => !e.isPrivate);
+
+      // TRASH VIEW (Admin only)
+      if (globalView === 'trash') {
+          return entries.filter(e => e.isTrashed).sort((a, b) => b.timestamp - a.timestamp);
       }
 
-      if (globalView === 'atlas' || globalView === 'gallery') {
-          return entries;
+      // NORMAL VIEWS: Exclude trash
+      entries = entries.filter(e => !e.isTrashed);
+
+      if (globalView === 'stats' || globalView === 'streak') {
+          return entries; // Stats/Streak needs all valid entries
+      }
+
+      if (globalView === 'atlas' || globalView === 'gallery') return entries;
+
+      if (globalView === 'onThisDay') {
+          const today = new Date();
+          return entries.filter(e => {
+              const d = new Date(e.timestamp);
+              return d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
+          }).sort((a, b) => b.timestamp - a.timestamp);
+      }
+
+      if (globalView === 'tags') {
+          if (searchQuery.startsWith('#')) {
+              const tag = searchQuery.substring(1).toLowerCase();
+              return entries.filter(e => e.tags?.some(t => t.toLowerCase() === tag)).sort((a, b) => b.timestamp - a.timestamp);
+          }
+          return entries; 
       }
 
       const config = data.settings?.categoryConfigs?.[activeCategory] || ({} as Partial<CategoryConfig>);
@@ -161,22 +403,90 @@ export default function App() {
 
       entries = entries.filter(e => allowedCategories.includes(e.category));
       
+      // --- INTELLIGENT FILTERS ---
+      if (filterStart) {
+          const startTs = new Date(filterStart).getTime();
+          entries = entries.filter(e => e.timestamp >= startTs);
+      }
+      if (filterEnd) {
+          const endTs = new Date(filterEnd).getTime() + 86400000; // End of that day
+          entries = entries.filter(e => e.timestamp <= endTs);
+      }
+      if (filterMood) {
+          entries = entries.filter(e => e.mood === filterMood);
+      }
+      if (filterHasPhoto) {
+          entries = entries.filter(e => (e.photos && e.photos.length > 0) || e.photo);
+      }
+
+      // Text Search
       if (searchQuery) {
           const q = searchQuery.toLowerCase();
           entries = entries.filter(e => 
               (e.title?.toLowerCase().includes(q)) ||
               (e.location?.toLowerCase().includes(q)) ||
               (Object.values(e.responses).some((r: string) => r.toLowerCase().includes(q))) ||
-              (e.freeTextContent?.toLowerCase().includes(q))
+              (e.freeTextContent?.toLowerCase().includes(q)) ||
+              (e.tags?.some(t => t.toLowerCase().includes(q.replace('#', ''))))
           );
       }
-      
       return entries.sort((a, b) => b.timestamp - a.timestamp);
+  }, [data.entries, activeCategory, globalView, isAdmin, searchQuery, filterStart, filterEnd, filterMood, filterHasPhoto]);
+
+  // Infinite Scroll Observer
+  useEffect(() => {
+      const observer = new IntersectionObserver((entries) => {
+          if (entries[0].isIntersecting) {
+              setVisibleCount(prev => prev + 12);
+          }
+      }, { rootMargin: '100px' });
+
+      if (loadMoreRef.current) {
+          observer.observe(loadMoreRef.current);
+      }
+
+      return () => observer.disconnect();
+  }, [filteredEntriesAll.length, loadMoreRef.current]);
+
+  const visibleEntries = React.useMemo(() => {
+      // For Atlas and Calendar, return ALL entries (they have their own clustering/pagination logic)
+      if (globalView === 'atlas' || (globalView === 'none' && viewMode === 'calendar')) {
+          return filteredEntriesAll;
+      }
+      // For List/Grid/Gallery/Trash/Tags/OnThisDay, apply slicing
+      return filteredEntriesAll.slice(0, visibleCount);
+  }, [filteredEntriesAll, visibleCount, globalView, viewMode]);
+
+
+  const performAutoSave = () => {
+      if (!draftEntry.id) return;
+      setSyncStatus('auto_syncing');
+      setData(prev => ({
+          ...prev,
+          entries: prev.entries.map(e => e.id === draftEntry.id ? { ...e, ...draftEntry } as Entry : e)
+      }));
+  };
+
+  // --- HELPER FUNCTIONS ---
+
+  const resetEditor = () => {
+      setIsEditing(false);
+      setIsDirty(false);
+      setDraftEntry({});
+      setLocationParts([]);
+  };
+
+  const attemptNavigation = (action: () => void) => {
+      if (isEditing && draftEntry.id) {
+          performAutoSave();
+          resetEditor();
+      }
+      action();
   };
 
   const handleModalNav = (direction: 'next' | 'prev') => {
       if (!selectedEntry) return;
-      const filtered = getFilteredEntries();
+      const filtered = filteredEntriesAll;
       const currentIndex = filtered.findIndex(e => e.id === selectedEntry.id);
       if (currentIndex === -1) return;
 
@@ -186,34 +496,200 @@ export default function App() {
       }
   };
 
-  const handleStorageModeSwitch = async (mode: 'server' | 'local') => {
-      if (mode === 'server') {
-          try {
-              const status = await StorageService.checkServerStatus();
-              if (!status.online) throw new Error(`${status.message} - ${status.details}`);
-              setServerMode(true);
-              setSystemMessage("");
-              const serverData = await StorageService.serverLoad();
-              if (serverData) {
-                  if (!serverData.questions || serverData.questions.length === 0) serverData.questions = DEFAULT_QUESTIONS;
-                  setData(prev => ({...serverData, settings: {...prev.settings, ...serverData.settings}}));
-              }
-          } catch (e: any) {
-              setServerMode(false);
-              const msg = e.message || "Ismeretlen szerver hiba";
-              setSystemMessage(msg);
-              throw new Error(msg);
-          }
-      } 
-      else {
-          setServerMode(false);
-          setSystemMessage("Offline Mód Aktív");
+  // --- TEMPLATE MANAGERS ---
+  const saveTemplate = (name: string, questions: string[], isDefault: boolean = false) => {
+      const newTemplate: Template = {
+          id: crypto.randomUUID(),
+          name,
+          questions,
+          category: activeCategory,
+          isDefault
+      };
+      
+      // If setting as default, unset others in this category
+      let newTemplates = [...(data.templates || [])];
+      if (isDefault) {
+          newTemplates = newTemplates.map(t => t.category === activeCategory ? { ...t, isDefault: false } : t);
       }
+      
+      setData(prev => ({ ...prev, templates: [...newTemplates, newTemplate] }));
+      alert(t('templates.saved'));
+  };
+
+  const deleteTemplate = (id: string) => {
+      if(confirm(t('common.confirm_action'))) {
+          setData(prev => ({ ...prev, templates: (prev.templates || []).filter(t => t.id !== id) }));
+      }
+  };
+
+  // --- ENTRY MANAGEMENT ---
+
+  const startNewEntry = () => {
+    const today = new Date();
+    let label = today.toISOString().slice(0, 10);
+    
+    if (activeCategory === Category.WEEKLY) {
+        const d = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+        const dayNum = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+        const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1)/7);
+        label = `${d.getUTCFullYear()} W${weekNo}`;
+    }
+    if (activeCategory === Category.MONTHLY) label = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}`;
+    if (activeCategory === Category.YEARLY) label = `${today.getFullYear()}`;
+
+    const activeQuestions = data.questions.filter(q => q.category === activeCategory && q.isActive);
+    const initialResponses: Record<string, string> = {};
+    
+    // Check for default template
+    const defaultTemplate = data.templates?.find(t => t.isDefault && t.category === activeCategory);
+
+    if (defaultTemplate) {
+        defaultTemplate.questions.forEach(qText => {
+            // Find ID for the question text
+            const q = data.questions.find(qx => qx.text === qText && qx.category === activeCategory);
+            if (q) initialResponses[q.id] = "";
+        });
+    } else {
+        // If no template, use first 6 active questions
+        activeQuestions.slice(0, 6).forEach(q => initialResponses[q.id] = "");
+    }
+
+    const newEntry: Entry = {
+      id: crypto.randomUUID(),
+      timestamp: Date.now(),
+      category: activeCategory,
+      dateLabel: label,
+      title: '',
+      responses: initialResponses,
+      entryMode: 'structured',
+      freeTextContent: '',
+      isPrivate: true, 
+      isLocationPrivate: false,
+      tags: [],
+      isDraft: true,
+      isTrashed: false,
+      photos: [] // Initialize empty array
+    };
+
+    setSyncStatus('auto_syncing');
+    setData(prev => ({
+        ...prev,
+        entries: [newEntry, ...prev.entries]
+    }));
+
+    setDraftEntry(newEntry);
+    setLocationParts([]);
+    setIsEditing(true);
+    setIsDirty(false);
+    setShowMobileMenu(false);
+  };
+
+  const editEntry = (entry: Entry) => {
+      if(isEditing && draftEntry.id) performAutoSave();
+
+      // Normalize photos on edit if legacy only exists
+      const entryCopy = JSON.parse(JSON.stringify(entry));
+      if (!entryCopy.photos) entryCopy.photos = entryCopy.photo ? [entryCopy.photo] : [];
+
+      setDraftEntry(entryCopy);
+      setLocationParts(entry.location ? entry.location.split(', ') : []);
+      setIsEditing(true);
+      setIsDirty(false);
+      setSelectedEntry(null);
+  };
+
+  const saveEntry = () => {
+    if (!draftEntry.id) return;
+    setSyncStatus('syncing');
+
+    const finalEntry = { ...draftEntry } as Entry;
+    if (!finalEntry.title?.trim()) finalEntry.title = finalEntry.dateLabel;
+    
+    if (locationParts.length > 0) {
+        finalEntry.location = locationParts.join(', ');
+    } else {
+        finalEntry.location = undefined; 
+    }
+
+    const allText = [
+        finalEntry.title || '',
+        finalEntry.freeTextContent || '',
+        ...Object.values(finalEntry.responses || {})
+    ].join(' ');
+    const tags = allText.match(/#[\w\u00C0-\u00FF]+/g)?.map(t => t.substring(1)) || [];
+    finalEntry.tags = [...new Set(tags)];
+    
+    finalEntry.isDraft = false; 
+
+    setData(prev => ({
+      ...prev,
+      entries: prev.entries.map(e => e.id === finalEntry.id ? finalEntry : e)
+    }));
+    
+    resetEditor();
+  };
+
+  const softDeleteEntry = (id: string | undefined) => {
+      if(!id) return;
+      if(window.confirm(t('common.confirm_delete'))) {
+          setSyncStatus('syncing');
+          setData(prev => ({
+              ...prev,
+              entries: prev.entries.map(e => e.id === id ? { ...e, isTrashed: true } : e)
+          }));
+          resetEditor();
+          setSelectedEntry(null);
+      }
+  };
+
+  const restoreEntry = (id: string) => {
+      setSyncStatus('syncing');
+      setData(prev => ({
+          ...prev,
+          entries: prev.entries.map(e => e.id === id ? { ...e, isTrashed: false } : e)
+      }));
+  };
+
+  const hardDeleteEntry = (id: string) => {
+      if(window.confirm(t('common.confirm_perm_delete'))) {
+          setSyncStatus('syncing');
+          setData(prev => ({
+              ...prev,
+              entries: prev.entries.filter(e => e.id !== id)
+          }));
+          setSelectedEntry(null);
+      }
+  };
+
+  const handleEditorChange = (updates: Partial<Entry>) => {
+      setDraftEntry(prev => ({ ...prev, ...updates }));
+      setIsDirty(true);
+  };
+
+  const handleEditorCancel = () => {
+      if (isDirty) {
+          if (window.confirm(t('common.confirm_discard_changes'))) {
+              resetEditor(); // Just reset state, don't move to trash
+          }
+      } else {
+          resetEditor();
+      }
+  };
+
+  const handleLogout = () => {
+    attemptNavigation(() => {
+        StorageService.clearAuthSession();
+        setIsAdmin(false);
+        setActiveTab('entries');
+        setGlobalView('none');
+        setShowMobileMenu(false);
+    });
   };
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isAppLoading) return;
     const currentPassword = data.settings?.adminPassword || DEMO_PASSWORD;
     if (passwordInput === currentPassword) {
       setIsAdmin(true);
@@ -221,16 +697,8 @@ export default function App() {
       setShowAuthModal(false);
       setPasswordInput("");
     } else {
-      alert("Hibás jelszó!");
+      alert(t('app.wrong_password'));
     }
-  };
-
-  const handleLogout = () => {
-    StorageService.clearAuthSession();
-    setIsAdmin(false);
-    setIsEditing(false);
-    setActiveTab('entries');
-    setShowMobileMenu(false);
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -246,92 +714,34 @@ export default function App() {
             importedData = await StorageService.importFromJson(file);
         }
 
-        if (confirm("Biztosan importálod az adatokat? " + (importedData ? "Ez felülírja a jelenlegi adatbázist." : "Az új bejegyzések hozzáadódnak a listához."))) {
+        if (window.confirm(t('app.import_confirm'))) {
            if (importedData) {
+              // Normalize entries on import to ensure backward compatibility
+              if (importedData.entries) {
+                  importedData.entries = importedData.entries.map(e => ({
+                      ...e,
+                      // Ensure photos array exists if legacy photo string is present
+                      photos: e.photos || (e.photo ? [e.photo] : []),
+                      // Ensure tags exist
+                      tags: e.tags || []
+                  }));
+              }
               setData(importedData);
               if (importedData.settings?.theme) setCurrentTheme(importedData.settings.theme);
            } else if (importedEntries.length > 0) {
-              setData(prev => ({ ...prev, entries: [...importedEntries, ...prev.entries] }));
+              // Normalize entries from WXR (usually handled in importFromWxr but safe to double check)
+              const normalizedEntries = importedEntries.map(e => ({
+                  ...e,
+                  photos: e.photos || (e.photo ? [e.photo] : []),
+                  tags: e.tags || []
+              }));
+              setData(prev => ({ ...prev, entries: [...normalizedEntries, ...prev.entries] }));
            }
         }
       } catch (err) {
-        alert("Hiba az importálás során.");
+        alert(t('app.import_error'));
       }
     }
-  };
-
-  const startNewEntry = () => {
-    const today = new Date();
-    let label = today.toISOString().slice(0, 10);
-    if (activeCategory === Category.WEEKLY) label = `${today.getFullYear()} W${Math.ceil((today.getDate() + 6 - today.getDay()) / 7)}`;
-    if (activeCategory === Category.MONTHLY) label = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}`;
-    if (activeCategory === Category.YEARLY) label = `${today.getFullYear()}`;
-
-    const activeQuestions = data.questions.filter(q => q.category === activeCategory && q.isActive);
-    const initialResponses: Record<string, string> = {};
-    activeQuestions.forEach(q => initialResponses[q.id] = "");
-
-    setCurrentEntry({
-      id: crypto.randomUUID(),
-      timestamp: Date.now(),
-      category: activeCategory,
-      dateLabel: label,
-      title: '',
-      responses: initialResponses,
-      entryMode: 'structured',
-      freeTextContent: '',
-      isPrivate: false,
-      isLocationPrivate: false
-    });
-    setLocationParts([]);
-    setIsEditing(true);
-    setShowMobileMenu(false);
-  };
-
-  const saveEntry = () => {
-    if (!currentEntry.id || !currentEntry.dateLabel) return;
-    const newEntry = currentEntry as Entry;
-    if (!newEntry.title?.trim()) newEntry.title = newEntry.dateLabel;
-    
-    if (locationParts.length > 0) {
-        newEntry.location = locationParts.join(', ');
-    } else if (newEntry.location && locationParts.length === 0 && isEditing) {
-        newEntry.location = undefined;
-    }
-
-    setData(prev => ({
-      ...prev,
-      entries: [newEntry, ...prev.entries.filter(e => e.id !== newEntry.id)]
-    }));
-    setIsEditing(false);
-    setCurrentEntry({});
-    setLocationParts([]);
-  };
-
-  const deleteEntry = (id: string, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    if (confirm("Biztosan törlöd ezt a bejegyzést?")) {
-      setData(prev => ({ ...prev, entries: prev.entries.filter(e => e.id !== id) }));
-      if (selectedEntry?.id === id) setSelectedEntry(null);
-    }
-  };
-
-  const toggleQuestionStatus = (id: string) => {
-    setData(prev => ({
-      ...prev,
-      questions: prev.questions.map(q => q.id === id ? { ...q, isActive: !q.isActive } : q)
-    }));
-  };
-
-  const addQuestion = (text: string) => {
-    setData(prev => ({
-        ...prev,
-        questions: [...prev.questions, { id: crypto.randomUUID(), text, category: activeCategory, isActive: true }]
-    }));
-  };
-
-  const deleteQuestion = (id: string) => {
-      setData(prev => ({ ...prev, questions: prev.questions.filter(x => x.id !== id) }));
   };
 
   const handleViewModeChange = (mode: 'grid' | 'timeline' | 'calendar' | 'atlas' | 'gallery') => {
@@ -353,17 +763,124 @@ export default function App() {
       }
   };
 
-  const renderActionButtons = (e: Entry): React.ReactNode => (
-      <>
-          <button onClick={(ev) => { ev.stopPropagation(); setSelectedEntry(e); }} className="p-1 hover:text-blue-500"><Eye className="w-4 h-4" /></button>
-          {isAdmin && (
+  const renderActionButtons = (e: Entry): React.ReactNode => {
+      if (globalView === 'trash') {
+          return (
               <>
-                  <button onClick={(ev) => { ev.stopPropagation(); setCurrentEntry(e); setLocationParts(e.location ? e.location.split(', ') : []); setIsEditing(true); }} className="p-1 hover:text-yellow-500"><PenTool className="w-4 h-4" /></button>
-                  <button onClick={(ev) => deleteEntry(e.id, ev)} className="p-1 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={(ev) => { ev.stopPropagation(); restoreEntry(e.id); }} className="p-1 hover:text-emerald-500" title={t('common.restore')}><Recycle className="w-4 h-4" /></button>
+                  <button onClick={(ev) => { ev.stopPropagation(); hardDeleteEntry(e.id); }} className="p-1 hover:text-red-500" title={t('common.perm_delete')}><Trash2 className="w-4 h-4" /></button>
               </>
-          )}
-      </>
-  );
+          );
+      }
+      return (
+          <>
+              <button onClick={(ev) => { ev.stopPropagation(); setSelectedEntry(e); }} className="p-1 hover:text-blue-500"><Eye className="w-4 h-4" /></button>
+              {isAdmin && (
+                  <>
+                      <button onClick={(ev) => { ev.stopPropagation(); editEntry(e); }} className="p-1 hover:text-yellow-500"><PenTool className="w-4 h-4" /></button>
+                      <button onClick={(ev) => { ev.stopPropagation(); softDeleteEntry(e.id); }} className="p-1 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                  </>
+              )}
+          </>
+      );
+  };
+
+  const renderTagCloud = () => {
+      // If Tag Manager is active, render it instead
+      if (showTagManager) {
+          return (
+              <div className="space-y-6">
+                  <TagManager 
+                      entries={data.entries}
+                      onUpdateEntries={(updatedEntries) => {
+                          setSyncStatus('syncing');
+                          setData(prev => ({ ...prev, entries: updatedEntries }));
+                      }}
+                      onBack={() => setShowTagManager(false)}
+                      themeClasses={themeClasses}
+                      t={t}
+                  />
+              </div>
+          );
+      }
+
+      // getFilteredEntries is used locally here just to count tags, logic remains same
+      // Note: for cloud we might want global stats or current view stats. 
+      // Current implementation respects filters.
+      const filtered = visibleEntries; // Use visibleEntries to match listing, or filteredEntriesAll for total count? Usually tag cloud shows global or filtered context. Let's use filteredEntriesAll for counts to be accurate to filter.
+      const tagCounts: Record<string, number> = {};
+      const sourceEntries = searchQuery.startsWith('#') ? data.entries.filter(e => (!e.isPrivate || isAdmin) && !e.isTrashed) : filteredEntriesAll;
+
+      sourceEntries.forEach(e => {
+          e.tags?.forEach(tag => {
+              tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+          });
+      });
+
+      const sortedTags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]);
+
+      return (
+          <div className="space-y-6">
+              <div className={`p-6 rounded-xl border ${themeClasses.card}`}>
+                  <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-bold flex items-center gap-2"><Hash className="w-5 h-5 text-emerald-500" /> {t('app.cloud_tags')}</h3>
+                      {isAdmin && (
+                          <Button size="sm" variant="secondary" onClick={() => setShowTagManager(true)} themeClasses={themeClasses}>
+                              <Edit2 className="w-4 h-4" /> {t('tags.manage_btn')}
+                          </Button>
+                      )}
+                  </div>
+                  
+                  {sortedTags.length === 0 ? (
+                      <p className="opacity-50 text-sm">{t('app.no_tags')}</p>
+                  ) : (
+                      <div className="flex flex-wrap gap-2">
+                          {sortedTags.map(([tag, count]) => (
+                              <button 
+                                key={tag}
+                                onClick={() => setSearchQuery(searchQuery === `#${tag}` ? '' : `#${tag}`)}
+                                className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${searchQuery === `#${tag}` ? 'bg-emerald-500 text-white' : 'bg-black/5 hover:bg-emerald-500/20 hover:text-emerald-500'}`}
+                              >
+                                  #{tag} <span className="opacity-50 ml-1 text-xs">{count}</span>
+                              </button>
+                          ))}
+                      </div>
+                  )}
+              </div>
+
+              {searchQuery.startsWith('#') && (
+                  <div className="animate-fade-in">
+                      <h4 className="font-bold mb-4 opacity-70">{t('app.entries_with_tag')} <span className="text-emerald-500">{searchQuery}</span></h4>
+                      <EntryList 
+                        viewMode="grid" 
+                        entries={visibleEntries} // Use sliced entries
+                        onSelectEntry={setSelectedEntry}
+                        renderActionButtons={renderActionButtons}
+                        themeClasses={themeClasses}
+                        isAdmin={isAdmin}
+                        t={t}
+                        gridLayout={data.settings?.gridLayout}
+                        weatherPack={weatherPack} // Prop passed
+                      />
+                      {/* Sentinel for Infinite Scroll */}
+                      {visibleCount < filteredEntriesAll.length && (
+                          <div ref={loadMoreRef} className="h-20 flex items-center justify-center opacity-50">
+                              <RefreshCw className="w-6 h-6 animate-spin" />
+                          </div>
+                      )}
+                  </div>
+              )}
+          </div>
+      );
+  };
+
+  // Determine main image for the selected entry (prefer array, fallback legacy)
+  const mainImage = selectedEntry ? (selectedEntry.photos && selectedEntry.photos.length > 0 ? selectedEntry.photos[0] : selectedEntry.photo) : null;
+  // Use all available images for the gallery logic
+  const galleryImages = selectedEntry?.photos || (selectedEntry?.photo ? [selectedEntry.photo] : []);
+
+  // Collect unique moods for filter
+  const availableMoods = Array.from(new Set(data.entries.map(e => e.mood).filter(Boolean)));
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${themeClasses.bg} ${themeClasses.text} font-sans selection:bg-emerald-500/30 flex flex-col`}>
@@ -375,8 +892,8 @@ export default function App() {
                         <div className="w-16 h-16 bg-emerald-500 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/20">
                             <Lock className="w-8 h-8 text-white" />
                         </div>
-                        <h2 className="text-2xl font-bold">Admin Belépés</h2>
-                        <p className={`text-sm mt-2 ${themeClasses.subtext}`}>Add meg a jelszót a szerkesztéshez.</p>
+                        <h2 className="text-2xl font-bold">{t('app.admin_login')}</h2>
+                        <p className={`text-sm mt-2 ${themeClasses.subtext}`}>{t('app.login_subtitle')}</p>
                     </div>
                     <form onSubmit={handleLogin} className="space-y-4">
                         <Input 
@@ -384,34 +901,59 @@ export default function App() {
                             type="password" 
                             value={passwordInput} 
                             onChange={(e: any) => setPasswordInput(e.target.value)} 
-                            placeholder="Jelszó" 
+                            placeholder={t('app.password')} 
                             autoFocus
                         />
-                        <Button type="submit" themeClasses={themeClasses} className="w-full">Belépés</Button>
+                        <Button type="submit" themeClasses={themeClasses} className="w-full">{t('app.login_btn')}</Button>
                     </form>
                 </Card>
             </div>
         )}
 
-        {showExportModal && <ExportModal onClose={() => setShowExportModal(false)} data={data} onImport={handleImport} themeClasses={themeClasses} currentTheme={currentTheme} />}
-        {showSettingsModal && <SettingsModal onClose={() => setShowSettingsModal(false)} data={data} setData={setData} themeClasses={themeClasses} currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} />}
-        {showDeployModal && <DeployModal onClose={() => setShowDeployModal(false)} themeClasses={themeClasses} />}
-        {showStorageMenu && <StorageDebugMenu onClose={() => setShowStorageMenu(false)} onSwitchMode={handleStorageModeSwitch} serverMode={serverMode} lastError={systemMessage} themeClasses={themeClasses} />}
+        {/* Lightbox / Fullscreen Image Overlay */}
+        {fullscreenImage && (
+            <div className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={() => setFullscreenImage(null)}>
+                <img src={fullscreenImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Fullscreen" />
+                <button className="absolute top-4 right-4 text-white p-2 hover:bg-white/20 rounded-full transition-colors"><X className="w-8 h-8" /></button>
+            </div>
+        )}
 
+        {showExportModal && <ExportModal onClose={() => attemptNavigation(() => setShowExportModal(false))} data={data} onImport={handleImport} themeClasses={themeClasses} currentTheme={currentTheme} t={t} />}
+        {showSettingsModal && <SettingsModal onClose={() => attemptNavigation(() => setShowSettingsModal(false))} data={data} setData={setData} themeClasses={themeClasses} currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} t={t} />}
+        {showDeployModal && <DeployModal onClose={() => attemptNavigation(() => setShowDeployModal(false))} themeClasses={themeClasses} t={t} />}
+        {showThemeEditor && <ThemeEditorModal onClose={() => attemptNavigation(() => setShowThemeEditor(false))} data={data} setData={setData} currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} themeClasses={themeClasses} t={t} />}
+        
+        {showStorageMenu && <StorageDebugMenu onClose={() => attemptNavigation(() => setShowStorageMenu(false))} onSwitchMode={async (m) => {
+             if(m === 'server') await StorageService.checkServerStatus(); 
+             setServerMode(m === 'server');
+        }} serverMode={serverMode} lastError={systemMessage} themeClasses={themeClasses} t={t} />}
+
+        {/* Detail View Modal */}
         {selectedEntry && (
-            <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-fade-in" onClick={() => setSelectedEntry(null)}>
-                <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl relative bg-zinc-900 border border-zinc-800 shadow-2xl" onClick={e => e.stopPropagation()}>
-                   <div className="sticky top-0 z-10 flex justify-between items-center p-4 border-b border-white/10 bg-zinc-900/90 backdrop-blur">
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-fade-in" onClick={() => setSelectedEntry(null)}>
+                <div 
+                    className={`w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl relative shadow-2xl border ${themeClasses.bg} ${themeClasses.text} ${themeClasses.card}`} 
+                    onClick={e => e.stopPropagation()}
+                >
+                   <div className={`sticky top-0 z-10 flex justify-between items-center p-4 border-b border-current border-opacity-10 backdrop-blur ${themeClasses.bg}/90`}>
                         <div className="flex gap-2">
-                             <Button size="sm" variant="secondary" onClick={() => handleModalNav('prev')}><ChevronLeft className="w-4 h-4" /></Button>
-                             <Button size="sm" variant="secondary" onClick={() => handleModalNav('next')}><ChevronRight className="w-4 h-4" /></Button>
+                             <Button size="sm" variant="secondary" themeClasses={themeClasses} onClick={() => {
+                                 const filtered = filteredEntriesAll; // Use all filtered entries for navigation
+                                 const idx = filtered.findIndex(e => e.id === selectedEntry.id);
+                                 if (idx !== -1 && idx < filtered.length - 1) setSelectedEntry(filtered[idx + 1]);
+                             }}><ChevronLeft className="w-4 h-4" /></Button>
+                             <Button size="sm" variant="secondary" themeClasses={themeClasses} onClick={() => {
+                                 const filtered = filteredEntriesAll; // Use all filtered entries for navigation
+                                 const idx = filtered.findIndex(e => e.id === selectedEntry.id);
+                                 if (idx > 0) setSelectedEntry(filtered[idx - 1]);
+                             }}><ChevronRight className="w-4 h-4" /></Button>
                         </div>
-                        <button onClick={() => setSelectedEntry(null)} className="p-2 hover:bg-white/10 rounded-full"><X className="w-5 h-5" /></button>
+                        <button onClick={() => setSelectedEntry(null)} className="p-2 hover:bg-black/5 rounded-full"><X className="w-5 h-5" /></button>
                    </div>
                    <div className="p-6 md:p-8 space-y-6">
                         <div className="flex items-start justify-between gap-4">
                             <div>
-                                <span className={`inline-block px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider mb-2 ${CATEGORY_COLORS[selectedEntry.category]} text-white`}>{CATEGORY_LABELS[selectedEntry.category]}</span>
+                                <span className={`inline-block px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider mb-2 ${CATEGORY_COLORS[selectedEntry.category]} text-white`}>{getCatLabel(selectedEntry.category)}</span>
                                 <h2 className="text-2xl md:text-3xl font-bold leading-tight">{selectedEntry.title || selectedEntry.dateLabel}</h2>
                                 <div className="flex flex-wrap items-center gap-3 mt-3 text-sm opacity-60">
                                     <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(selectedEntry.timestamp).toLocaleDateString()}</span>
@@ -422,18 +964,24 @@ export default function App() {
                                     
                                     {selectedEntry.weather && (
                                         <span className="flex items-center gap-1">
-                                            <ThermometerSun className="w-3 h-3" /> 
-                                            {selectedEntry.weather.icon && <img src={`https://openweathermap.org/img/wn/${selectedEntry.weather.icon}.png`} className="w-4 h-4" alt="icon" />}
+                                            <WeatherRenderer data={selectedEntry.weather} pack={weatherPack} className="w-4 h-4" />
                                             {selectedEntry.weather.temp}°C, {selectedEntry.weather.condition}
                                         </span>
                                     )}
                                 </div>
+                                {selectedEntry.tags && selectedEntry.tags.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 mt-3">
+                                        {selectedEntry.tags.map(t => (
+                                            <span key={t} className={`text-xs font-bold ${themeClasses.accent}`}>#{t}</span>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                             {selectedEntry.mood && <div className="text-4xl">{selectedEntry.mood}</div>}
                         </div>
 
                         {selectedEntry.photo && (
-                            <div className="rounded-xl overflow-hidden border border-white/10">
+                            <div className="rounded-xl overflow-hidden border border-current border-opacity-10">
                                 <img src={selectedEntry.photo} className="w-full h-auto" alt="Entry" />
                             </div>
                         )}
@@ -446,25 +994,48 @@ export default function App() {
                                     const q = data.questions.find(qx => qx.id === qId);
                                     if (!q || !ans) return null;
                                     return (
-                                        <div key={qId} className="border-l-2 border-emerald-500/50 pl-4 py-1">
-                                            <h4 className="font-bold text-sm text-emerald-500 mb-1">{q.text}</h4>
+                                        <div key={qId} className={`border-l-2 pl-4 py-1 ${themeClasses.card.includes('border') ? 'border-emerald-500/50' : 'border-current'}`}>
+                                            <h4 className={`font-bold text-sm mb-1 ${themeClasses.accent}`}>{q.text}</h4>
                                             <p className="whitespace-pre-wrap">{ans as React.ReactNode}</p>
                                         </div>
                                     )
                                 })
                             )}
                         </div>
+
+                        {/* Gallery Section - Masonry Style with Lightbox Click */}
+                        {galleryImages.length > 0 && (
+                            <div className="pt-8 border-t border-current border-opacity-10">
+                                <h3 className={`text-lg font-bold mb-4 flex items-center gap-2 ${themeClasses.accent}`}><ImageIcon className="w-5 h-5" /> {t('app.photo_gallery')}</h3>
+                                <div className="columns-2 md:columns-3 gap-2 space-y-2">
+                                    {galleryImages.map((src, i) => (
+                                        <div key={i} className="break-inside-avoid">
+                                            <img 
+                                                src={src} 
+                                                alt={`Gallery ${i}`} 
+                                                className="w-full rounded-lg border border-current border-opacity-10 hover:opacity-90 transition-opacity cursor-pointer" 
+                                                onClick={() => setFullscreenImage(src)}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                    </div>
-                   <div className="p-4 border-t border-white/10 bg-zinc-900/50 flex justify-end gap-2">
+                   <div className={`p-4 border-t border-current border-opacity-10 flex justify-end gap-2 ${themeClasses.bg}`}>
                        {isAdmin && (
                            <>
-                               <Button variant="danger" size="sm" onClick={(e) => { deleteEntry(selectedEntry.id); }}>Törlés</Button>
-                               <Button variant="primary" size="sm" onClick={() => { 
-                                   setCurrentEntry(selectedEntry); 
-                                   setLocationParts(selectedEntry.location ? selectedEntry.location.split(', ') : []);
-                                   setIsEditing(true); 
-                                   setSelectedEntry(null); 
-                                }}>Szerkesztés</Button>
+                               {globalView === 'trash' ? (
+                                   <>
+                                     <Button variant="ghost" size="sm" onClick={() => restoreEntry(selectedEntry.id)}>{t('common.restore')}</Button>
+                                     <Button variant="danger" size="sm" onClick={() => hardDeleteEntry(selectedEntry.id)}>{t('common.perm_delete')}</Button>
+                                   </>
+                               ) : (
+                                   <>
+                                     <Button variant="danger" size="sm" onClick={(e) => { softDeleteEntry(selectedEntry.id); }}>{t('common.delete')}</Button>
+                                     <Button variant="primary" size="sm" onClick={() => editEntry(selectedEntry)}>{t('common.edit')}</Button>
+                                   </>
+                               )}
                            </>
                        )}
                    </div>
@@ -475,121 +1046,290 @@ export default function App() {
         <Navbar 
             appName={appName}
             activeCategory={activeCategory}
-            setActiveCategory={setActiveCategory}
+            setActiveCategory={(cat) => attemptNavigation(() => { setActiveCategory(cat); setGlobalView('none'); setActiveTab('entries'); })}
             globalView={globalView}
-            setGlobalView={setGlobalView}
+            setGlobalView={(v) => attemptNavigation(() => setGlobalView(v))}
             setActiveTab={setActiveTab}
             isAdmin={isAdmin}
-            onOpenDeploy={() => setShowDeployModal(true)}
-            onOpenSettings={() => setShowSettingsModal(true)}
-            onOpenExport={() => setShowExportModal(true)}
+            onOpenExport={() => attemptNavigation(() => setShowExportModal(true))}
+            onOpenDeploy={() => attemptNavigation(() => setShowDeployModal(true))}
+            onOpenSettings={() => attemptNavigation(() => setShowSettingsModal(true))}
+            onOpenThemeEditor={() => attemptNavigation(() => setShowThemeEditor(true))}
             onLogout={handleLogout}
             onOpenAuth={() => setShowAuthModal(true)}
             themeClasses={themeClasses}
             showMobileMenu={showMobileMenu}
             setShowMobileMenu={setShowMobileMenu}
+            t={t}
+            showStats={showStats && isAdmin}
+            showGamification={showGamification && isAdmin}
+            currentStreak={streakInfo.current}
         />
 
         <main className="flex-1 max-w-6xl mx-auto w-full p-4 pb-24">
             {isAppLoading ? (
                 <div className="flex flex-col items-center justify-center h-64 opacity-50">
                     <RefreshCw className="w-8 h-8 animate-spin mb-4" />
-                    <p>Betöltés...</p>
+                    <p>{t('common.loading')}</p>
                 </div>
             ) : isEditing ? (
                 <EntryEditor 
-                    currentEntry={currentEntry}
-                    onChange={setCurrentEntry}
+                    entry={draftEntry}
+                    onChange={handleEditorChange}
                     onSave={saveEntry}
-                    onCancel={() => setIsEditing(false)}
+                    onCancel={handleEditorCancel}
+                    onDelete={() => softDeleteEntry(draftEntry.id)}
                     activeCategory={activeCategory}
                     questions={data.questions}
                     settings={data.settings}
+                    templates={data.templates}
+                    onSaveTemplate={saveTemplate}
+                    onDeleteTemplate={deleteTemplate}
                     themeClasses={themeClasses}
                     currentTheme={currentTheme}
                     locationParts={locationParts}
                     setLocationParts={setLocationParts}
                     serverMode={serverMode}
+                    t={t}
+                    currentLang={currentLang}
+                    entries={data.entries}
                 />
             ) : globalView === 'atlas' ? (
                 <div className="space-y-4">
-                    <h2 className="text-xl font-bold flex items-center gap-2"><Globe className="w-5 h-5" /> Világtérkép</h2>
-                    <AtlasView entries={data.entries} activeCategory={activeCategory} onSelectEntry={setSelectedEntry} themeClasses={themeClasses} showAll={true} isAdmin={isAdmin} />
+                    <h2 className="text-xl font-bold flex items-center gap-2"><Globe className="w-5 h-5" /> {t('app.world_map')}</h2>
+                    <AtlasView entries={visibleEntries} activeCategory={activeCategory} onSelectEntry={setSelectedEntry} themeClasses={themeClasses} showAll={true} isAdmin={isAdmin} t={t} />
                 </div>
             ) : globalView === 'gallery' ? (
                 <div className="space-y-4">
-                     <h2 className="text-xl font-bold flex items-center gap-2"><Images className="w-5 h-5" /> Fotógaléria</h2>
-                     <GalleryView entries={data.entries} onSelectEntry={setSelectedEntry} themeClasses={themeClasses} renderActionButtons={renderActionButtons} />
+                     <h2 className="text-xl font-bold flex items-center gap-2"><ImageIcon className="w-5 h-5" /> {t('app.photo_gallery')}</h2>
+                     <GalleryView entries={visibleEntries} onSelectEntry={setSelectedEntry} themeClasses={themeClasses} renderActionButtons={renderActionButtons} t={t} />
+                     {/* Sentinel for Infinite Scroll */}
+                     {visibleCount < filteredEntriesAll.length && (
+                          <div ref={loadMoreRef} className="h-20 flex items-center justify-center opacity-50">
+                              <RefreshCw className="w-6 h-6 animate-spin" />
+                          </div>
+                     )}
+                </div>
+            ) : globalView === 'stats' ? (
+                <div className="space-y-4">
+                    <h2 className="text-xl font-bold flex items-center gap-2"><PieChart className="w-5 h-5 text-emerald-500" /> {t('stats.title')}</h2>
+                    <StatsView 
+                        entries={filteredEntriesAll} 
+                        themeClasses={themeClasses} 
+                        t={t} 
+                        savedLayout={data.settings?.statsLayout}
+                        onSaveLayout={(order) => setData(prev => ({ ...prev, settings: { ...prev.settings, statsLayout: order } }))}
+                        weatherPack={weatherPack} // Pass Pack
+                    />
+                </div>
+            ) : globalView === 'streak' ? (
+                <StreakView 
+                    entries={data.entries} 
+                    currentStreak={streakInfo.current} 
+                    longestStreak={streakInfo.longest} 
+                    themeClasses={themeClasses} 
+                    t={t} 
+                />
+            ) : globalView === 'tags' ? (
+                renderTagCloud()
+            ) : globalView === 'onThisDay' ? (
+                <div className="space-y-4">
+                    <h2 className="text-xl font-bold flex items-center gap-2">
+                        <CalendarClock className="w-5 h-5 text-emerald-500" /> 
+                        {t('app.on_this_day_title')} ({new Date().toLocaleDateString(currentLang === 'hu' ? 'hu-HU' : 'en-US', { month: 'long', day: 'numeric' })})
+                    </h2>
+                    <EntryList 
+                        viewMode="grid" 
+                        entries={visibleEntries}
+                        onSelectEntry={setSelectedEntry}
+                        renderActionButtons={renderActionButtons}
+                        themeClasses={themeClasses}
+                        isAdmin={isAdmin}
+                        t={t}
+                        gridLayout={data.settings?.gridLayout}
+                        weatherPack={weatherPack} // Pass Pack
+                    />
+                    {/* Sentinel for Infinite Scroll */}
+                    {visibleCount < filteredEntriesAll.length && (
+                          <div ref={loadMoreRef} className="h-20 flex items-center justify-center opacity-50">
+                              <RefreshCw className="w-6 h-6 animate-spin" />
+                          </div>
+                    )}
+                </div>
+            ) : globalView === 'trash' ? (
+                <div className="space-y-4">
+                    <h2 className="text-xl font-bold flex items-center gap-2 text-red-500">
+                        <Trash2 className="w-5 h-5" /> 
+                        {t('common.trash')}
+                    </h2>
+                    {filteredEntriesAll.length === 0 ? (
+                        <p className="text-center opacity-50 py-10">{t('common.empty_trash')}</p>
+                    ) : (
+                        <>
+                            <EntryList 
+                                viewMode="grid" 
+                                entries={visibleEntries}
+                                onSelectEntry={setSelectedEntry}
+                                renderActionButtons={renderActionButtons}
+                                themeClasses={themeClasses}
+                                isAdmin={isAdmin}
+                                t={t}
+                                weatherPack={weatherPack} // Pass Pack
+                            />
+                            {/* Sentinel for Infinite Scroll */}
+                            {visibleCount < filteredEntriesAll.length && (
+                                <div ref={loadMoreRef} className="h-20 flex items-center justify-center opacity-50">
+                                    <RefreshCw className="w-6 h-6 animate-spin" />
+                                </div>
+                            )}
+                        </>
+                    )}
                 </div>
             ) : (
                 <>
-                    <div className="flex flex-col md:flex-row gap-4 mb-6 items-center justify-between">
-                         <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
-                             {activeTab === 'entries' && (
-                                <div className="flex bg-black/5 p-1 rounded-lg border border-black/5 mr-2">
-                                    <button onClick={() => handleViewModeChange('grid')} className={`p-1.5 rounded ${viewMode === 'grid' ? 'bg-white shadow text-black' : 'opacity-50'}`} title="Grid"><Layout className="w-4 h-4" /></button>
-                                    <button onClick={() => handleViewModeChange('timeline')} className={`p-1.5 rounded ${viewMode === 'timeline' ? 'bg-white shadow text-black' : 'opacity-50'}`} title="Timeline"><List className="w-4 h-4" /></button>
-                                    <button onClick={() => handleViewModeChange('calendar')} className={`p-1.5 rounded ${viewMode === 'calendar' ? 'bg-white shadow text-black' : 'opacity-50'}`} title="Naptár"><Calendar className="w-4 h-4" /></button>
-                                    <button onClick={() => handleViewModeChange('atlas')} className={`p-1.5 rounded ${viewMode === 'atlas' ? 'bg-white shadow text-black' : 'opacity-50'}`} title="Térkép"><MapIcon className="w-4 h-4" /></button>
-                                    <button onClick={() => handleViewModeChange('gallery')} className={`p-1.5 rounded ${viewMode === 'gallery' ? 'bg-white shadow text-black' : 'opacity-50'}`} title="Galéria"><Images className="w-4 h-4" /></button>
-                                </div>
-                             )}
-                             {isAdmin && (
-                                <div className="flex bg-black/5 p-1 rounded-lg border border-black/5">
-                                    <button onClick={() => setActiveTab('entries')} className={`px-3 py-1 rounded text-xs font-bold ${activeTab === 'entries' ? 'bg-white shadow text-black' : 'opacity-50'}`}>Bejegyzések</button>
-                                    <button onClick={() => setActiveTab('questions')} className={`px-3 py-1 rounded text-xs font-bold ${activeTab === 'questions' ? 'bg-white shadow text-black' : 'opacity-50'}`}>Kérdések</button>
-                                </div>
-                             )}
+                    <div className="flex flex-col gap-4 mb-6">
+                         {/* Controls Row */}
+                         <div className="flex flex-wrap items-center gap-4 justify-between">
+                             <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
+                                 {activeTab === 'entries' && (
+                                    <div className="flex bg-black/5 p-1 rounded-lg border border-black/5 mr-2">
+                                        <button onClick={() => handleViewModeChange('grid')} className={`p-1.5 rounded transition-colors ${viewMode === 'grid' ? themeClasses.primaryBtn : 'opacity-50 hover:opacity-100'}`} title="Grid"><Layout className="w-4 h-4" /></button>
+                                        <button onClick={() => handleViewModeChange('timeline')} className={`p-1.5 rounded transition-colors ${viewMode === 'timeline' ? themeClasses.primaryBtn : 'opacity-50 hover:opacity-100'}`} title="Timeline"><List className="w-4 h-4" /></button>
+                                        <button onClick={() => handleViewModeChange('calendar')} className={`p-1.5 rounded transition-colors ${viewMode === 'calendar' ? themeClasses.primaryBtn : 'opacity-50 hover:opacity-100'}`} title="Calendar"><Calendar className="w-4 h-4" /></button>
+                                        <button onClick={() => handleViewModeChange('atlas')} className={`p-1.5 rounded transition-colors ${viewMode === 'atlas' ? themeClasses.primaryBtn : 'opacity-50 hover:opacity-100'}`} title="Map"><MapIcon className="w-4 h-4" /></button>
+                                        <button onClick={() => handleViewModeChange('gallery')} className={`p-1.5 rounded transition-colors ${viewMode === 'gallery' ? themeClasses.primaryBtn : 'opacity-50 hover:opacity-100'}`} title="Gallery"><ImageIcon className="w-4 h-4" /></button>
+                                    </div>
+                                 )}
+                                 
+                                 {isAdmin && (
+                                    <div className="flex bg-black/5 p-1 rounded-lg border border-black/5">
+                                        <button onClick={() => setActiveTab('entries')} className={`px-3 py-1 rounded text-xs font-bold transition-colors ${activeTab === 'entries' ? themeClasses.primaryBtn : 'opacity-50 hover:opacity-100'}`}>{t('app.entries_tab')}</button>
+                                        <button onClick={() => setActiveTab('questions')} className={`px-3 py-1 rounded text-xs font-bold transition-colors ${activeTab === 'questions' ? themeClasses.primaryBtn : 'opacity-50 hover:opacity-100'}`}>{t('app.questions_tab')}</button>
+                                    </div>
+                                 )}
+                             </div>
+
+                             <div className="flex items-center gap-2 w-full md:w-auto">
+                                 <div className="relative flex-1 md:w-64">
+                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50" />
+                                     <input 
+                                        className={`w-full pl-9 pr-4 py-2 rounded-lg text-sm bg-transparent border focus:ring-2 focus:outline-none ${themeClasses.input}`}
+                                        placeholder={t('common.search')}
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                     />
+                                 </div>
+                                 <button 
+                                    onClick={() => setShowFilters(!showFilters)} 
+                                    className={`p-2 rounded-lg border transition-all ${showFilters ? themeClasses.accent + ' bg-black/5 border-current' : 'border-transparent bg-black/5 hover:bg-black/10'}`}
+                                    title={t('filters.title')}
+                                 >
+                                    <Filter className="w-5 h-5" />
+                                 </button>
+                             </div>
                          </div>
 
-                         <div className="relative w-full md:w-64">
-                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50" />
-                             <input 
-                                className={`w-full pl-9 pr-4 py-2 rounded-lg text-sm bg-transparent border focus:ring-2 focus:outline-none ${themeClasses.input}`}
-                                placeholder="Keresés..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                             />
-                         </div>
+                         {/* Intelligent Filters Panel */}
+                         {showFilters && (
+                             <div className={`p-4 rounded-lg border animate-fade-in grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 ${themeClasses.card}`}>
+                                 <div className="flex flex-col gap-1">
+                                     <label className={`text-[10px] font-bold uppercase ${themeClasses.subtext}`}>{t('filters.date_start')}</label>
+                                     <Input type="date" themeClasses={themeClasses} value={filterStart} onChange={(e: any) => setFilterStart(e.target.value)} />
+                                 </div>
+                                 <div className="flex flex-col gap-1">
+                                     <label className={`text-[10px] font-bold uppercase ${themeClasses.subtext}`}>{t('filters.date_end')}</label>
+                                     <Input type="date" themeClasses={themeClasses} value={filterEnd} onChange={(e: any) => setFilterEnd(e.target.value)} />
+                                 </div>
+                                 <div className="flex flex-col gap-1">
+                                     <label className={`text-[10px] font-bold uppercase ${themeClasses.subtext}`}>{t('filters.mood')}</label>
+                                     <select 
+                                        className={`w-full rounded-lg px-4 py-2 border bg-transparent focus:outline-none ${themeClasses.input}`}
+                                        value={filterMood}
+                                        onChange={(e) => setFilterMood(e.target.value)}
+                                     >
+                                         <option value="">-</option>
+                                         {availableMoods.map(m => (
+                                             <option key={m} value={m}>{m}</option>
+                                         ))}
+                                     </select>
+                                 </div>
+                                 <div className="flex items-end gap-2">
+                                     <button 
+                                        onClick={() => setFilterHasPhoto(!filterHasPhoto)}
+                                        className={`flex-1 py-2 px-3 rounded-lg border text-xs font-bold transition-all flex items-center justify-center gap-2 ${filterHasPhoto ? themeClasses.accent + ' border-current' : 'border-transparent bg-black/5'}`}
+                                     >
+                                         <ImageIcon className="w-4 h-4" /> {t('filters.has_photo')}
+                                     </button>
+                                     <button 
+                                        onClick={() => { setFilterStart(""); setFilterEnd(""); setFilterMood(""); setFilterHasPhoto(false); setSearchQuery(""); }}
+                                        className="p-2 rounded-lg bg-black/5 hover:bg-red-500/10 hover:text-red-500 transition-colors"
+                                        title={t('filters.clear')}
+                                     >
+                                         <X className="w-4 h-4" />
+                                     </button>
+                                 </div>
+                             </div>
+                         )}
                     </div>
 
                     {activeTab === 'questions' ? (
                         <QuestionManager 
                             questions={data.questions} 
                             activeCategory={activeCategory} 
-                            onAdd={addQuestion} 
-                            onToggle={toggleQuestionStatus} 
-                            onDelete={deleteQuestion} 
-                            themeClasses={themeClasses} 
+                            onAdd={(txt, subCat) => setData(p => ({...p, questions: [...p.questions, {id:crypto.randomUUID(), text:txt, category:activeCategory, subCategory: subCat, isActive:true}]}))} 
+                            onToggle={(id) => setData(p => ({...p, questions: p.questions.map(q => q.id===id?{...q,isActive:!q.isActive}:q)}))} 
+                            onDelete={(id) => setData(p => ({...p, questions: p.questions.filter(q => q.id!==id)}))} 
+                            themeClasses={themeClasses}
+                            t={t} 
                         />
                     ) : (
                         <div className="animate-fade-in">
                             {(viewMode === 'grid' || viewMode === 'timeline') && (
-                                <EntryList 
-                                    viewMode={viewMode}
-                                    entries={getFilteredEntries()}
-                                    onSelectEntry={setSelectedEntry}
-                                    renderActionButtons={renderActionButtons}
-                                    themeClasses={themeClasses}
-                                    isAdmin={isAdmin}
-                                />
+                                <>
+                                    <EntryList 
+                                        viewMode={viewMode}
+                                        entries={visibleEntries}
+                                        onSelectEntry={setSelectedEntry}
+                                        renderActionButtons={renderActionButtons}
+                                        themeClasses={themeClasses}
+                                        isAdmin={isAdmin}
+                                        t={t}
+                                        gridLayout={data.settings?.gridLayout}
+                                        weatherPack={weatherPack} // Pass Pack
+                                    />
+                                    {/* Sentinel for Infinite Scroll */}
+                                    {visibleCount < filteredEntriesAll.length && (
+                                        <div ref={loadMoreRef} className="h-20 flex items-center justify-center opacity-50">
+                                            <RefreshCw className="w-6 h-6 animate-spin" />
+                                        </div>
+                                    )}
+                                </>
                             )}
 
                             {viewMode === 'atlas' && (
-                                <AtlasView entries={getFilteredEntries()} activeCategory={activeCategory} onSelectEntry={setSelectedEntry} themeClasses={themeClasses} isAdmin={isAdmin} />
+                                <AtlasView entries={visibleEntries} activeCategory={activeCategory} onSelectEntry={setSelectedEntry} themeClasses={themeClasses} isAdmin={isAdmin} t={t} />
                             )}
                             
                             {viewMode === 'gallery' && (
-                                <GalleryView entries={getFilteredEntries()} onSelectEntry={setSelectedEntry} themeClasses={themeClasses} renderActionButtons={renderActionButtons} />
+                                <>
+                                    <GalleryView entries={visibleEntries} onSelectEntry={setSelectedEntry} themeClasses={themeClasses} renderActionButtons={renderActionButtons} t={t} />
+                                    {/* Sentinel for Infinite Scroll */}
+                                    {visibleCount < filteredEntriesAll.length && (
+                                        <div ref={loadMoreRef} className="h-20 flex items-center justify-center opacity-50">
+                                            <RefreshCw className="w-6 h-6 animate-spin" />
+                                        </div>
+                                    )}
+                                </>
                             )}
                             
                             {viewMode === 'calendar' && (
                                 <CalendarView 
-                                    entries={getFilteredEntries()} 
+                                    entries={filteredEntriesAll} // Calendar needs all for navigation, no infinite scroll
                                     currentDate={calendarDate} 
                                     onDateChange={setCalendarDate} 
                                     onSelectEntry={setSelectedEntry} 
                                     themeClasses={themeClasses}
+                                    t={t}
                                 />
                             )}
                         </div>
@@ -598,10 +1338,11 @@ export default function App() {
             )}
         </main>
 
-        {isAdmin && !isEditing && (
+        {isAdmin && !isEditing && globalView !== 'trash' && globalView !== 'streak' && globalView !== 'stats' && (
             <button 
                 onClick={startNewEntry}
                 className="fixed bottom-8 right-6 w-14 h-14 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full shadow-lg shadow-emerald-500/30 flex items-center justify-center transition-transform hover:scale-110 active:scale-95 z-50"
+                title={t('app.new_entry')}
             >
                 <Plus className="w-6 h-6" />
             </button>
@@ -614,7 +1355,9 @@ export default function App() {
                 lastSyncTime={lastSyncTime} 
                 systemMessage={systemMessage} 
                 themeClasses={themeClasses}
-                onOpenDebug={() => setShowStorageMenu(true)}
+                cloudEnabled={false}
+                onOpenDebug={() => attemptNavigation(() => setShowStorageMenu(true))}
+                t={t}
             />
         )}
     </div>
