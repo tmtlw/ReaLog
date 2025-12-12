@@ -77,6 +77,8 @@ const EntryEditor: React.FC<EntryEditorProps> = ({
     }, [currentEntry.freeTextContent, currentEntry.responses]);
 
     const isWordCountLow = settings?.minWordCount && wordCount < settings.minWordCount;
+    const progressPercent = settings?.minWordCount ? Math.min(100, (wordCount / settings.minWordCount) * 100) : 0;
+    const isGoalMet = progressPercent >= 100;
 
     useEffect(() => {
         if (currentEntry?.location && locationParts.length === 0) {
@@ -575,8 +577,18 @@ const EntryEditor: React.FC<EntryEditorProps> = ({
               </div>
               <div className="justify-self-end w-full flex items-center justify-end gap-3">
                   {settings?.showWordCount !== false && (
-                      <div className={`hidden md:flex flex-col items-end leading-tight ${isWordCountLow ? 'text-red-500 animate-pulse' : 'opacity-70'}`}>
-                            <span className="text-lg font-bold">{wordCount} <span className="text-xs opacity-50 font-normal">{settings?.minWordCount ? `/ ${settings.minWordCount}` : ''}</span></span>
+                      <div className={`hidden md:flex flex-col items-end leading-tight ${isWordCountLow ? 'text-red-500' : 'opacity-70'}`}>
+                            <div className="flex items-center gap-2">
+                                <span className="text-lg font-bold">{wordCount} <span className="text-xs opacity-50 font-normal">{settings?.minWordCount ? `/ ${settings.minWordCount}` : ''}</span></span>
+                                {settings?.minWordCount && settings.minWordCount > 0 && (
+                                    <div className="w-16 h-1.5 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden" title={`${Math.round(progressPercent)}%`}>
+                                        <div 
+                                            className={`h-full transition-all duration-500 ease-out ${isGoalMet ? 'bg-emerald-500' : 'bg-blue-500'}`} 
+                                            style={{ width: `${progressPercent}%` }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
                             <span className="text-[10px] uppercase opacity-60">{t('editor.words') || 'szó'}</span>
                       </div>
                   )}

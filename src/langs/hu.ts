@@ -303,7 +303,8 @@ const hu = {
         sort_by: 'Rendezés',
         sort_name: 'Név',
         sort_date: 'Dátum',
-        map_preview: 'Térkép'
+        map_preview: 'Térkép',
+        insert_time: 'Idő beszúrása'
     },
     questions: {
         title: 'Kérdések kezelése',
@@ -348,7 +349,9 @@ const hu = {
         format: 'Formátum (Helyi)',
         import: 'Importálás',
         import_placeholder: 'JSON vagy WXR fájl feltöltése',
-        include_private: 'Privát bejegyzések is'
+        include_private: 'Privát bejegyzések is',
+        markdown_obsidian: 'Obsidian / Markdown (ZIP)',
+        markdown_desc: 'Mappastruktúra + .md fájlok'
     },
     debug: {
         title: 'Tároló Váltás',

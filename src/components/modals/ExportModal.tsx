@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { X, Download, Upload, Book, Printer } from 'lucide-react';
+import { X, Download, Upload, Book, Printer, FolderArchive } from 'lucide-react';
 import { AppData, ThemeOption } from '../../types';
 import { Button, Card, Input } from '../ui';
 import * as StorageService from '../../services/storage';
@@ -17,7 +18,7 @@ const ExportModal: React.FC<{
     const [endDate, setEndDate] = useState('');
     const [includePrivate, setIncludePrivate] = useState(false);
 
-    const handleExport = (format: 'json' | 'txt' | 'html' | 'wxr' | 'pdf' | 'epub') => {
+    const handleExport = (format: 'json' | 'txt' | 'html' | 'wxr' | 'pdf' | 'epub' | 'md') => {
         const filter = range === 'custom' ? {
               start: startDate ? new Date(startDate).getTime() : undefined,
               end: endDate ? new Date(endDate).getTime() + 86400000 : undefined 
@@ -65,17 +66,20 @@ const ExportModal: React.FC<{
                         </div>
                     </div>
                     
-                    {/* Book Export */}
+                    {/* Advanced Export */}
                     <div>
-                        <label className={`block text-xs font-bold uppercase mb-2 ${themeClasses.subtext}`}>Könyv Generálás</label>
-                        <div className="grid grid-cols-2 gap-2">
+                        <label className={`block text-xs font-bold uppercase mb-2 ${themeClasses.subtext}`}>Speciális Export</label>
+                        <div className="grid grid-cols-2 gap-2 mb-2">
                             <Button variant="secondary" themeClasses={themeClasses} onClick={() => handleExport('epub')}>
                                 <Book className="w-4 h-4" /> E-könyv (EPUB)
                             </Button>
                             <Button variant="secondary" themeClasses={themeClasses} onClick={() => handleExport('pdf')}>
-                                <Printer className="w-4 h-4" /> Nyomtatás (PDF)
+                                <Printer className="w-4 h-4" /> PDF
                             </Button>
                         </div>
+                        <Button variant="secondary" themeClasses={themeClasses} onClick={() => handleExport('md')} className="w-full" title={t('export.markdown_desc')}>
+                            <FolderArchive className="w-4 h-4" /> {t('export.markdown_obsidian')}
+                        </Button>
                     </div>
 
                     {/* Standard Export */}

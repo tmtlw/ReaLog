@@ -557,8 +557,8 @@ export const importFromWxr = (file: File): Promise<Entry[]> => {
   });
 };
 
-const downloadFile = (content: string, filename: string, mimeType: string) => {
-  const blob = new Blob([content], { type: mimeType });
+const downloadFile = (content: any, filename: string, mimeType: string) => {
+  const blob = content instanceof Blob ? content : new Blob([content], { type: mimeType });
   const href = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = href;
@@ -568,10 +568,9 @@ const downloadFile = (content: string, filename: string, mimeType: string) => {
   document.body.removeChild(link);
 };
 
-// ... (Export functions remain unchanged) ...
 export const exportData = async (
   data: AppData, 
-  format: 'json' | 'txt' | 'html' | 'wxr' | 'pdf' | 'epub', 
+  format: 'json' | 'txt' | 'html' | 'wxr' | 'pdf' | 'epub' | 'md', 
   filter: { start?: number, end?: number },
   includePrivate: boolean = false
 ) => {
@@ -598,6 +597,89 @@ export const exportData = async (
     downloadFile(JSON.stringify(exportObj, null, 2), `grind-diary-${filenameDate}.json`, 'application/json');
     return;
   }
+
+  // --- MARKDOWN / OBSIDIAN EXPORT (ZIP) ---
+  if (format === 'md') {
+      // @ts-ignore
+      if (typeof window.JSZip === 'undefined') {
+          alert("JSZip könyvtár nem töltődött be. Ellenőrizd a hálózatot.");
+          return;
+      }
+      
+      // @ts-ignore
+      const zip = new window.JSZip();
+      const rootFolder = zip.folder("ReaLog Export");
+
+      entriesToExport.forEach(e => {
+          const date = new Date(e.timestamp);
+          const year = date.getFullYear();
+          const month = (date.getMonth() + 1).toString().padStart(2, '0');
+          const day = date.getDate().toString().padStart(2, '0');
+          
+          // Structure: YYYY / MM / YYYY-MM-DD - Title.md
+          const titleSafe = (e.title || e.dateLabel || 'Untitled').replace(/[\\/:*?"<>|]/g, '-');
+          const filename = `${year}-${month}-${day} - ${titleSafe}.md`;
+          
+          const folder = rootFolder.folder(year.toString()).folder(month);
+          
+          // Construct content
+          let content = "---\n";
+          content += `title: "${e.title || e.dateLabel}"\n`;
+          content += `date: ${date.toISOString()}\n`;
+          content += `category: ${e.category}\n`;
+          if (e.mood) content += `mood: ${e.mood}\n`;
+          if (e.location) content += `location: "${e.location}"\n`;
+          if (e.tags && e.tags.length > 0) content += `tags: [${e.tags.join(', ')}]\n`;
+          content += "---\n\n";
+          
+          content += `# ${e.title || e.dateLabel}\n\n`;
+          
+          if (e.weather) {
+              content += `> ${e.weather.temp}°C, ${e.weather.condition}\n\n`;
+          }
+
+          if (e.entryMode === 'free') {
+              // Convert basic HTML to MD
+              const text = e.freeTextContent || '';
+              const mdText = text
+                  .replace(/<b>(.*?)<\/b>/g, '**$1**')
+                  .replace(/<i>(.*?)<\/i>/g, '*$1*')
+                  .replace(/<u>(.*?)<\/u>/g, '__$1__')
+                  .replace(/<br\s*\/?>/g, '\n')
+                  .replace(/<a href="(.*?)".*?>(.*?)<\/a>/g, '[$2]($1)');
+              content += mdText + "\n\n";
+          } else {
+              Object.entries(e.responses).forEach(([qId, ans]) => {
+                  if (ans) {
+                      const q = data.questions.find(qx => qx.id === qId);
+                      if (q) {
+                          content += `### ${q.text}\n${ans}\n\n`;
+                      }
+                  }
+              });
+          }
+
+          if (e.photos && e.photos.length > 0) {
+              content += `\n## Photos\n`;
+              e.photos.forEach(p => {
+                  content += `![](${p})\n`;
+              });
+          }
+
+          folder.file(filename, content);
+      });
+
+      try {
+          const content = await zip.generateAsync({type:"blob"});
+          downloadFile(content, `realog-obsidian-${filenameDate}.zip`, "application/zip");
+      } catch (e) {
+          console.error("ZIP generation failed", e);
+          alert("Hiba a ZIP fájl generálása közben.");
+      }
+      return;
+  }
+
+  // ... (Other formats: TXT, HTML, WXR, PDF/EPUB handled by existing logic or placeholder) ...
 };
 
 // --- Github Update Check ---

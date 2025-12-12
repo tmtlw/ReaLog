@@ -1,5 +1,6 @@
+
 import React, { useRef, useEffect } from 'react';
-import { Bold, Italic, Underline, List, Link as LinkIcon, Heading1, Quote, Code, RotateCcw } from 'lucide-react';
+import { Bold, Italic, Underline, List, Link as LinkIcon, Heading1, Quote, Code, RotateCcw, Clock } from 'lucide-react';
 
 interface RichTextEditorProps {
     value: string;
@@ -43,10 +44,21 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, themeC
         if (url) exec('createLink', url);
     };
 
-    const ToolbarButton = ({ icon: Icon, cmd, arg, title }: any) => (
+    const insertTime = () => {
+        const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        exec('insertText', `[${time}] `);
+    };
+
+    const ToolbarButton = ({ icon: Icon, cmd, arg, title, onClick }: any) => (
         <button 
             type="button" 
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); if(cmd === 'link') insertLink(); else exec(cmd, arg); }}
+            onClick={(e) => { 
+                e.preventDefault(); 
+                e.stopPropagation(); 
+                if (onClick) onClick();
+                else if(cmd === 'link') insertLink(); 
+                else exec(cmd, arg); 
+            }}
             className="p-1.5 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-colors"
             title={title}
         >
@@ -68,6 +80,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, themeC
                 <ToolbarButton icon={List} cmd="insertUnorderedList" title="Lista" />
                 <ToolbarButton icon={LinkIcon} cmd="link" title="Link" />
                 <div className="w-px h-4 bg-current opacity-20 mx-1"></div>
+                <ToolbarButton icon={Clock} onClick={insertTime} title="Időbélyeg" />
                 <ToolbarButton icon={RotateCcw} cmd="removeFormat" title="Formázás törlése" />
             </div>
             

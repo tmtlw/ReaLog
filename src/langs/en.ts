@@ -284,7 +284,9 @@ const en = {
         format: 'Format (Local)',
         import: 'Import',
         import_placeholder: 'Upload JSON or WXR file',
-        include_private: 'Include private entries'
+        include_private: 'Include private entries',
+        markdown_obsidian: 'Obsidian / Markdown (ZIP)',
+        markdown_desc: 'Folder structure + .md files'
     },
     debug: {
         title: 'Switch Storage',

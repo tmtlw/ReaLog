@@ -5,9 +5,18 @@ export interface ChangeLogItem {
     changes: string[];
 }
 
-export const APP_VERSION = "4.7.2";
+export const APP_VERSION = "4.7.3";
 
 export const CHANGELOG: ChangeLogItem[] = [
+    {
+        version: "4.7.3",
+        date: "2024-12-12",
+        changes: [
+            "Új funkció: Időbélyegző beszúrása a szerkesztőben ([HH:MM]).",
+            "Új funkció: Obsidian / Markdown exportálás (.zip csomagban, mappákba rendezve).",
+            "UI fejlesztés: Vizuális folyamatjelző csík a napi szószám cél követéséhez."
+        ]
+    },
     {
         version: "4.7.2",
         date: "2024-12-10",
@@ -263,8 +272,7 @@ export const CHANGELOG: ChangeLogItem[] = [
         date: "2023-11-20",
         changes: [
             "Első nyilvános verzió.",
-            "Alapvető naplózási funkciók (Napi, Heti, Havi).",
-            "Lokális adattárolás (LocalStorage)."
+            "Alapvető naplózási funkciók (Napi, Heti, Havi)."
         ]
     }
 ];
