@@ -610,7 +610,12 @@ export const checkGithubVersion = async (currentVersion: string) => {
         // Fetch package.json from raw
         const packageUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.OWNER}/${GITHUB_CONFIG.REPO}/${GITHUB_CONFIG.BRANCH}/package.json`;
         const res = await fetch(packageUrl);
-        if (!res.ok) throw new Error("Failed to fetch version");
+        
+        if (res.status === 404) {
+            throw new Error("Repository nem található vagy privát (404)");
+        }
+        
+        if (!res.ok) throw new Error(`HTTP hiba: ${res.status}`);
         
         const pkg = await res.json();
         const remoteVersion = pkg.version;
@@ -624,14 +629,11 @@ export const checkGithubVersion = async (currentVersion: string) => {
             if (clRes.ok) {
                 const clText = await clRes.text();
                 // Simple regex to extract changes array for the specific version
-                // Looking for { version: "REMOTE_VERSION", ... changes: [ ... ] }
-                // This is a rough parser for TS file content
                 const versionBlock = clText.split(`version: "${remoteVersion}"`)[1];
                 if (versionBlock) {
                     const changesBlock = versionBlock.split('changes: [')[1];
                     if (changesBlock) {
                         const rawChanges = changesBlock.split(']')[0];
-                        // Extract strings
                         const matches = rawChanges.match(/"(.*?)"/g);
                         if (matches) {
                             changes = matches.map(s => s.replace(/"/g, ''));
@@ -646,8 +648,9 @@ export const checkGithubVersion = async (currentVersion: string) => {
                 url: `https://github.com/${GITHUB_CONFIG.OWNER}/${GITHUB_CONFIG.REPO}`
             };
         }
-    } catch(e) {
+    } catch(e: any) {
         console.warn("Update check failed", e);
+        throw new Error(e.message || "Ismeretlen hiba");
     }
     return null;
 };

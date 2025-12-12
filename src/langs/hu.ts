@@ -167,7 +167,6 @@ const hu = {
         },
         theme: 'Téma',
         language: 'Nyelv',
-        mood_emojis: 'Hangulat Emojik',
         weather_api: 'OpenWeatherMap API Kulcs',
         display_name: 'Megjelenített Név',
         account_hint_name: 'pl. Rea (Ebből lesz: ReaLog)',
@@ -209,6 +208,8 @@ const hu = {
         show_word_count: 'Szószám mutatása szerkesztőben',
         checking_update: 'Frissítések keresése',
         new_version: 'Új verzió elérhető',
+        uptodate: 'A rendszer naprakész',
+        update_error: 'Hiba a verzió ellenőrzésekor',
         update_btn: 'Frissítés',
         whats_new: 'Újdonságok'
     },

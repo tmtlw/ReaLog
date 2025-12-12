@@ -5,9 +5,18 @@ export interface ChangeLogItem {
     changes: string[];
 }
 
-export const APP_VERSION = "4.7.1";
+export const APP_VERSION = "4.7.2";
 
 export const CHANGELOG: ChangeLogItem[] = [
+    {
+        version: "4.7.2",
+        date: "2024-12-10",
+        changes: [
+            "UI frissítés: Beállítások/Fiók fül egyszerűsítése (Emoji lista eltávolítása).",
+            "Javítás: Frissítés ellenőrző felület vizuális visszajelzéseinek pontosítása (Hiba/Naprakész állapotok).",
+            "Dokumentáció: Részletes README és útmutatók frissítése."
+        ]
+    },
     {
         version: "4.7.1",
         date: "2024-12-10",

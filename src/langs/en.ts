@@ -164,7 +164,6 @@ const en = {
         },
         theme: 'Theme',
         language: 'Language',
-        mood_emojis: 'Mood Emojis',
         weather_api: 'OpenWeatherMap API Key',
         display_name: 'Display Name',
         account_hint_name: 'e.g. Rea (Becomes: ReaLog)',
@@ -206,6 +205,8 @@ const en = {
         show_word_count: 'Show word count in editor',
         checking_update: 'Checking for updates',
         new_version: 'New version available',
+        uptodate: 'System is up to date',
+        update_error: 'Error checking version',
         update_btn: 'Update',
         whats_new: 'What\'s new'
     },

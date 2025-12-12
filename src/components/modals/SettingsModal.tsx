@@ -7,7 +7,6 @@ import { APP_VERSION } from '../../changelog';
 import * as StorageService from '../../services/storage';
 
 // Tabs
-import SettingsGeneralTab from '../settings/SettingsGeneralTab';
 import SettingsViewsTab from '../settings/SettingsViewsTab';
 import SettingsPublicTab from '../settings/SettingsPublicTab';
 import SettingsAccountTab from '../settings/SettingsAccountTab';
@@ -15,7 +14,7 @@ import SettingsDataTab from '../settings/SettingsDataTab';
 import SettingsCloudTab from '../settings/SettingsCloudTab';
 import SettingsAboutTab from '../settings/SettingsAboutTab';
 
-type Tab = 'general' | 'views' | 'public' | 'account' | 'cloud' | 'about' | 'data';
+type Tab = 'views' | 'public' | 'account' | 'cloud' | 'about' | 'data';
 
 const SettingsModal: React.FC<{ 
     onClose: () => void, 
@@ -26,7 +25,7 @@ const SettingsModal: React.FC<{
     setCurrentTheme: (t: ThemeOption) => void,
     t: (key: string) => string,
     initialTab?: Tab
-}> = ({ onClose, data, setData, themeClasses, currentTheme, setCurrentTheme, t, initialTab = 'general' }) => {
+}> = ({ onClose, data, setData, themeClasses, currentTheme, setCurrentTheme, t, initialTab = 'account' }) => {
     const [activeTab, setActiveTab] = useState<Tab>(initialTab);
     const [localSettings, setLocalSettings] = useState(data.settings || {});
     
@@ -36,7 +35,7 @@ const SettingsModal: React.FC<{
     
     // Update State
     const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
-    const [updateInfo, setUpdateInfo] = useState<{version: string, changes: string[], url: string} | null>(null);
+    const [updateInfo, setUpdateInfo] = useState<{version: string, changes: string[], url: string, error?: string} | null>(null);
 
     // Fetch backups when Data tab is active
     useEffect(() => {
@@ -70,9 +69,18 @@ const SettingsModal: React.FC<{
             const info = await StorageService.checkGithubVersion(APP_VERSION);
             if (info) {
                 setUpdateInfo(info);
+            } else {
+                // Up to date
+                setUpdateInfo({ version: APP_VERSION, changes: [], url: "" });
             }
-        } catch(e) {
+        } catch(e: any) {
             console.warn("Update check error", e);
+            setUpdateInfo({ 
+                version: "Error", 
+                changes: [e.message || "Hiba a verzió ellenőrzésekor"], 
+                url: "",
+                error: "true" 
+            });
         } finally {
             setIsCheckingUpdate(false);
         }
@@ -151,10 +159,9 @@ const SettingsModal: React.FC<{
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4 pb-12">
             <Card themeClasses={themeClasses} className="w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[85vh] mb-10 border-2">
                 <div className={`flex border-b overflow-x-auto shrink-0 ${themeClasses.card.includes('zinc') ? 'border-zinc-800' : 'border-slate-200'}`}>
-                    <button onClick={() => setActiveTab('general')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'general' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>{t('settings.tabs.general')}</button>
+                    <button onClick={() => setActiveTab('account')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'account' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>{t('settings.tabs.account')}</button>
                     <button onClick={() => setActiveTab('views')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'views' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>{t('settings.tabs.views')}</button>
                     <button onClick={() => setActiveTab('public')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'public' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>{t('settings.tabs.public')}</button>
-                    <button onClick={() => setActiveTab('account')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'account' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>{t('settings.tabs.account')}</button>
                     <button onClick={() => setActiveTab('cloud')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'cloud' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>Felhő</button>
                     <button onClick={() => setActiveTab('data')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'data' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>{t('settings.tabs.data')}</button>
                     <button onClick={() => setActiveTab('about')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'about' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>{t('settings.tabs.about')}</button>
@@ -162,17 +169,6 @@ const SettingsModal: React.FC<{
 
                 <div className={`flex-1 min-h-0 ${activeTab === 'about' ? 'flex flex-col overflow-hidden' : 'p-6 overflow-y-auto'}`}>
                     
-                    {activeTab === 'general' && (
-                        <SettingsGeneralTab 
-                            localSettings={localSettings} 
-                            setLocalSettings={setLocalSettings} 
-                            themeClasses={themeClasses} 
-                            currentTheme={currentTheme} 
-                            setCurrentTheme={setCurrentTheme} 
-                            t={t} 
-                        />
-                    )}
-
                     {activeTab === 'views' && (
                         <SettingsViewsTab 
                             localSettings={localSettings} 

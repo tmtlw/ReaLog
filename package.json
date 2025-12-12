@@ -1,8 +1,8 @@
 
 {
   "name": "grind-naplo",
-  "version": "4.7.1",
-  "description": "Grind Napló (CGI Mode)",
+  "version": "4.7.2",
+  "description": "Grind Napló - Minimalista, JSON alapú életkövető rendszer",
   "scripts": {
     "test": "echo \"Use standard Node CGI execution\""
   },
