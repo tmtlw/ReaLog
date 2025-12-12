@@ -80,7 +80,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, themeC
                 <ToolbarButton icon={List} cmd="insertUnorderedList" title="Lista" />
                 <ToolbarButton icon={LinkIcon} cmd="link" title="Link" />
                 <div className="w-px h-4 bg-current opacity-20 mx-1"></div>
-                <ToolbarButton icon={Clock} onClick={insertTime} title="Időbélyeg" />
+                <ToolbarButton icon={Clock} onClick={insertTime} title={placeholder?.includes('gondolat') ? "Idő beszúrása" : "Időbélyeg"} />
                 <ToolbarButton icon={RotateCcw} cmd="removeFormat" title="Formázás törlése" />
             </div>
             

@@ -1,7 +1,7 @@
 
 {
   "name": "realog",
-  "version": "4.7.3",
+  "version": "4.7.4",
   "description": "ReaLog - Minimalista, JSON alapú életkövető rendszer (PHP / Node.js)",
   "scripts": {
     "test": "echo \"Run on PHP (Recommended) or Node.js CGI\""
