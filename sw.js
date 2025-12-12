@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'realog-v4.7.2-offline';
+const CACHE_NAME = 'realog-v4.7.5-offline';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -18,8 +18,8 @@ const ASSETS_TO_CACHE = [
   // Font Assets (Cached for Local-like execution)
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&family=Lobster&display=swap',
   'https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&family=Noto+Emoji:wght@300..700&display=swap',
-  'https://cdn.jsdelivr.net/npm/@openmoji/openmoji-font@latest/fonts/OpenMoji-Color.woff2',
-  'https://cdn.jsdelivr.net/gh/emojidex/emojidex-web@latest/src/fonts/emojidex-monospaced.woff2'
+  // Fixed version for OpenMoji
+  'https://cdn.jsdelivr.net/npm/@openmoji/openmoji@14.0.0/font/OpenMoji-Color.woff2'
 ];
 
 // Install Event - Cache Files with CORS handling

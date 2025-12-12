@@ -285,6 +285,21 @@ export const createBackup = async (): Promise<void> => {
     if (!res.ok) throw new Error("Backup creation failed");
 };
 
+export const createSystemBackup = async (): Promise<void> => {
+    const url = getApiUrl('data');
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'system_backup' })
+    });
+    if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || "System backup failed");
+    }
+    const json = await res.json();
+    if(json.error) throw new Error(json.error);
+};
+
 export const restoreBackup = async (filename: string): Promise<void> => {
     const url = getApiUrl('data');
     const res = await fetch(url, {

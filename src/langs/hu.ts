@@ -217,7 +217,11 @@ const hu = {
         in_progress: 'Frissítés folyamatban...',
         success: 'Sikeres frissítés!',
         failed: 'Frissítési hiba',
-        retry: 'Újrapróbálkozás'
+        retry: 'Újrapróbálkozás',
+        step_backup: 'Biztonsági mentés készítése...',
+        step_download: 'Fájlok letöltése...',
+        step_install: 'Új verzió telepítése...',
+        backup_error: 'Nem sikerült biztonsági mentést készíteni. A frissítés leállt.'
     },
     tags: {
         manager_title: 'Címke Menedzser',

@@ -33,16 +33,13 @@
     <!-- Google Noto Color Emoji needs crossorigin to avoid CORS issues in some contexts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&family=Noto+Emoji:wght@300..700&display=swap" rel="stylesheet" crossorigin="anonymous">
     <style>
+      /* Stable OpenMoji Version */
       @font-face {
         font-family: 'OpenMoji';
-        src: url('https://cdn.jsdelivr.net/npm/@openmoji/openmoji-font@latest/fonts/OpenMoji-Color.woff2') format('woff2');
+        src: url('https://cdn.jsdelivr.net/npm/@openmoji/openmoji@14.0.0/font/OpenMoji-Color.woff2') format('woff2');
         font-display: swap;
       }
-      @font-face {
-        font-family: 'Emojidex';
-        src: url('https://cdn.jsdelivr.net/gh/emojidex/emojidex-web@latest/src/fonts/emojidex-monospaced.woff2') format('woff2');
-        font-display: swap;
-      }
+      /* Emojidex removed due to instability/404s. System/Noto fallback will be used. */
     </style>
 
 <script type="importmap">

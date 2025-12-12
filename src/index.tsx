@@ -1,5 +1,5 @@
 
-// ReaLog v4.7.4 - Entry Point
+// ReaLog v4.7.6 - Entry Point
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';

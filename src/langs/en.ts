@@ -121,9 +121,9 @@ const en = {
         weather_color: 'Colorful',
         weather_emoji: 'Emoji',
         weather_ascii: 'ASCII (Retro)',
-        weather_thin: 'Thin',
-        weather_bold: 'Bold',
-        weather_cartoon: 'Cartoon',
+        weather_thin: 'Vékony',
+        weather_bold: 'Vastag',
+        weather_cartoon: 'Rajzfilm',
         weather_mono_duotone: 'Mono Duotone',
         weather_neon: 'Neon',
         emoji_noto: 'Google Noto Color',
@@ -217,7 +217,11 @@ const en = {
         in_progress: 'Update in progress...',
         success: 'Update successful!',
         failed: 'Update failed',
-        retry: 'Retry'
+        retry: 'Retry',
+        step_backup: 'Backing up system...',
+        step_download: 'Downloading files...',
+        step_install: 'Installing new version...',
+        backup_error: 'Failed to create system backup. Update aborted.'
     },
     tags: {
         manager_title: 'Tag Manager',

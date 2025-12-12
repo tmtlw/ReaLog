@@ -204,17 +204,16 @@ const ThemeEditorModal: React.FC<{
         setIsSaving(true);
         let success = false;
         try {
-            if (emojiStyle === 'openmoji' || emojiStyle === 'emojidex') {
-                const url = emojiStyle === 'openmoji' 
-                    ? 'https://cdn.jsdelivr.net/npm/@openmoji/openmoji-font@latest/fonts/OpenMoji-Color.woff2'
-                    : 'https://cdn.jsdelivr.net/gh/emojidex/emojidex-web@latest/src/fonts/emojidex-monospaced.woff2';
-                
-                const filename = emojiStyle === 'openmoji' ? 'OpenMoji-Color.woff2' : 'emojidex-monospaced.woff2';
+            if (emojiStyle === 'openmoji') {
+                // Use FIXED stable version to avoid 404
+                const url = 'https://cdn.jsdelivr.net/npm/@openmoji/openmoji@14.0.0/font/OpenMoji-Color.woff2';
+                const filename = 'OpenMoji-Color.woff2';
                 
                 // Attempt to save to server
                 await StorageService.saveFont(url, filename);
                 success = true;
             }
+            // Emojidex removed from download logic to avoid 404s
         } catch(e) {
             console.warn("Could not save font to server, using CDN/Cache", e);
         } finally {
@@ -493,7 +492,6 @@ const ThemeEditorModal: React.FC<{
                                 <EmojiPreview style="noto" currentStyle={emojiStyle} onSelect={setEmojiStyle} t={t} />
                                 <EmojiPreview style="noto-mono" currentStyle={emojiStyle} onSelect={setEmojiStyle} t={t} />
                                 <EmojiPreview style="openmoji" currentStyle={emojiStyle} onSelect={setEmojiStyle} t={t} />
-                                <EmojiPreview style="emojidex" currentStyle={emojiStyle} onSelect={setEmojiStyle} t={t} />
                                 <EmojiPreview style="native" currentStyle={emojiStyle} onSelect={setEmojiStyle} t={t} />
                                 <EmojiPreview style="grayscale" currentStyle={emojiStyle} onSelect={setEmojiStyle} t={t} />
                                 <EmojiPreview style="sepia" currentStyle={emojiStyle} onSelect={setEmojiStyle} t={t} />

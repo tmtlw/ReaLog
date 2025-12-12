@@ -80,6 +80,21 @@ const deleteFolderRecursive = (dirPath) => {
     }
 };
 
+// Recursive copy for backup
+const copyRecursiveSync = (src, dest) => {
+    const exists = fs.existsSync(src);
+    const stats = exists && fs.statSync(src);
+    const isDirectory = exists && stats.isDirectory();
+    if (isDirectory) {
+        if (!fs.existsSync(dest)) fs.mkdirSync(dest);
+        fs.readdirSync(src).forEach((childItemName) => {
+            copyRecursiveSync(path.join(src, childItemName), path.join(dest, childItemName));
+        });
+    } else {
+        fs.copyFileSync(src, dest);
+    }
+};
+
 try {
     const uri = process.env.REQUEST_URI || '';
     const method = process.env.REQUEST_METHOD || 'GET';
@@ -163,6 +178,23 @@ try {
                     if (fs.existsSync(CUSTOM_QUESTIONS_FILE)) questions = JSON.parse(fs.readFileSync(CUSTOM_QUESTIONS_FILE, 'utf8'));
                     fs.writeFileSync(backupFile, JSON.stringify({ entries, settings, questions }), 'utf8');
                     send({ success: true, file: \`backup-\${timestamp}.json\` });
+                }
+                else if (action === 'system_backup') {
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                    const backupFolder = path.join(BACKUPS_DIR, \`system_backup_\${timestamp}\`);
+                    if (!fs.existsSync(backupFolder)) fs.mkdirSync(backupFolder);
+                    
+                    // Specific files to backup
+                    ['index.html', 'style.css', 'sw.js', 'manifest.json', 'package.json'].forEach(f => {
+                        const src = path.join(__dirname, f);
+                        if (fs.existsSync(src)) fs.copyFileSync(src, path.join(backupFolder, f));
+                    });
+                    
+                    // Recursive copy src folder
+                    const srcFolder = path.join(__dirname, 'src');
+                    if (fs.existsSync(srcFolder)) copyRecursiveSync(srcFolder, path.join(backupFolder, 'src'));
+                    
+                    send({ success: true, path: backupFolder });
                 }
                 else if (action === 'restore') {
                     const filename = input.filename;
@@ -346,6 +378,21 @@ function rmdir_recursive($dir) {
     }
 }
 
+function copy_recursive($src, $dst) {
+    $dir = opendir($src);
+    @mkdir($dst);
+    while(false !== ( $file = readdir($dir)) ) {
+        if (( $file != '.' ) && ( $file != '..' )) {
+            if ( is_dir($src . '/' . $file) ) {
+                copy_recursive($src . '/' . $file,$dst . '/' . $file);
+            } else {
+                copy($src . '/' . $file,$dst . '/' . $file);
+            }
+        }
+    }
+    closedir($dir);
+}
+
 if (strpos($uri, '/status') !== false) {
     echo json_encode(['status' => 'online', 'type' => 'php (structured)', 'version' => phpversion()]);
     exit;
@@ -460,6 +507,20 @@ if ($method === 'GET') {
             $questions = file_exists($customQuestionsFile) ? json_decode(file_get_contents($customQuestionsFile), true) : [];
             file_put_contents($backupFile, json_encode(['entries' => $entries, 'settings' => $settings, 'questions' => $questions]));
             echo json_encode(['success' => true, 'file' => "backup-$timestamp.json"]);
+        }
+        elseif ($action === 'system_backup') {
+            $timestamp = date('Y-m-d-H-i-s');
+            $backupFolder = $backupsDir . "/system_backup_$timestamp";
+            mkdir($backupFolder, 0755, true);
+            
+            // Backup critical files
+            foreach(['index.html', 'style.css', 'sw.js', 'manifest.json', 'package.json'] as $f) {
+                if(file_exists(__DIR__ . '/' . $f)) copy(__DIR__ . '/' . $f, $backupFolder . '/' . $f);
+            }
+            // Backup src folder
+            if(is_dir(__DIR__ . '/src')) copy_recursive(__DIR__ . '/src', $backupFolder . '/src');
+            
+            echo json_encode(['success' => true]);
         }
         elseif ($action === 'restore') {
             $filename = basename($json['filename']);
