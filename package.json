@@ -1,10 +1,10 @@
 
 {
-  "name": "grind-naplo",
+  "name": "realog",
   "version": "4.7.2",
-  "description": "Grind Napló - Minimalista, JSON alapú életkövető rendszer",
+  "description": "ReaLog - Minimalista, JSON alapú életkövető rendszer (PHP / Node.js)",
   "scripts": {
-    "test": "echo \"Use standard Node CGI execution\""
+    "test": "echo \"Run on PHP (Recommended) or Node.js CGI\""
   },
   "dependencies": {}
 }

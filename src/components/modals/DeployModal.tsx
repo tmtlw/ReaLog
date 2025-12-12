@@ -4,8 +4,7 @@ import { Server, X, RefreshCw, Code, Copy, AlertTriangle } from 'lucide-react';
 import { Button, Card } from '../ui';
 import { SERVER_CODE_JSCRIPT, SERVER_CODE_PHP, SERVER_CODE_HTACCESS_PHP, SERVER_CODE_HTACCESS_NODE } from '../../constants/serverTemplates';
 import { DEFAULT_QUESTIONS } from '../../constants';
-
-const APP_VERSION = "4.5.3";
+import { APP_VERSION } from '../../changelog';
 
 const DeployModal: React.FC<{ onClose: () => void, themeClasses: any, t: (key: string) => string }> = ({ onClose, themeClasses, t }) => {
     const [isZipping, setIsZipping] = useState(false);
@@ -73,8 +72,14 @@ const DeployModal: React.FC<{ onClose: () => void, themeClasses: any, t: (key: s
                     if (content) {
                         zip.file(zipPath, content);
                     } else if (zipPath === 'package.json') {
-                        // Fallback for package.json
-                        zip.file(zipPath, JSON.stringify({name: "realog", version: APP_VERSION, description: "ReaLog"}, null, 2));
+                        // Fallback for package.json if not loaded correctly
+                        zip.file(zipPath, JSON.stringify({
+                            name: "realog", 
+                            version: APP_VERSION, 
+                            description: "ReaLog - Minimalista, JSON alapú életkövető rendszer (PHP / Node.js)",
+                            scripts: { "test": "echo \"Run on PHP (Recommended) or Node.js CGI\"" },
+                            dependencies: {}
+                        }, null, 2));
                     } else {
                         // Silent fail for non-critical assets, or log
                         // console.warn(`Could not load ${f}`);

@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'realog-v4.5.6-offline';
+const CACHE_NAME = 'realog-v4.7.2-offline';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
