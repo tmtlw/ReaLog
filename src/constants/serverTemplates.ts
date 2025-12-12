@@ -121,7 +121,7 @@ try {
                 try { settings = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); } catch(e) {}
             }
             
-            // SMART QUESTIONS MERGE: Load Default First, Then Merge Custom
+            // SMART QUESTIONS MERGE
             let defaultQuestions = [];
             if (fs.existsSync(DEFAULT_QUESTIONS_FILE)) {
                  try { defaultQuestions = JSON.parse(fs.readFileSync(DEFAULT_QUESTIONS_FILE, 'utf8')); } catch(e) {}
@@ -130,17 +130,12 @@ try {
             if (fs.existsSync(CUSTOM_QUESTIONS_FILE)) {
                  try { 
                      const customQuestions = JSON.parse(fs.readFileSync(CUSTOM_QUESTIONS_FILE, 'utf8'));
-                     
-                     // Create a map for defaults
                      const qMap = {};
                      defaultQuestions.forEach(q => qMap[q.id] = q);
-                     
-                     // Overwrite with custom (handles status changes) and add new ones
                      customQuestions.forEach(q => qMap[q.id] = q);
-                     
                      questions = Object.values(qMap);
                  } catch(e) {
-                     questions = defaultQuestions; // Fallback if custom corrupted
+                     questions = defaultQuestions;
                  }
             } else {
                 questions = defaultQuestions;
@@ -159,37 +154,27 @@ try {
                 const action = input.action || 'save';
 
                 if (action === 'backup') {
-                    // Create full backup
                     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
                     const backupFile = path.join(BACKUPS_DIR, \`backup-\${timestamp}.json\`);
-                    
                     const entries = getAllEntries(POSTS_DIR);
                     let settings = {};
                     let questions = [];
-                    
                     if (fs.existsSync(SETTINGS_FILE)) settings = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
                     if (fs.existsSync(CUSTOM_QUESTIONS_FILE)) questions = JSON.parse(fs.readFileSync(CUSTOM_QUESTIONS_FILE, 'utf8'));
-                    
                     fs.writeFileSync(backupFile, JSON.stringify({ entries, settings, questions }), 'utf8');
                     send({ success: true, file: \`backup-\${timestamp}.json\` });
                 }
                 else if (action === 'restore') {
                     const filename = input.filename;
                     const backupPath = path.join(BACKUPS_DIR, filename);
-                    
                     if (!fs.existsSync(backupPath)) {
                         send({ error: "Backup file not found" }, 404);
                     } else {
                         const data = JSON.parse(fs.readFileSync(backupPath, 'utf8'));
-                        
-                        // Clear current posts
                         deleteFolderRecursive(POSTS_DIR);
                         if (!fs.existsSync(POSTS_DIR)) fs.mkdirSync(POSTS_DIR);
-
-                        // Save restored data using standard save logic (calling inner save logic function would be better but simple copy here)
                         if (data.questions) fs.writeFileSync(CUSTOM_QUESTIONS_FILE, JSON.stringify(data.questions), 'utf8');
                         if (data.settings) fs.writeFileSync(SETTINGS_FILE, JSON.stringify(data.settings), 'utf8');
-                        
                         if (data.entries) {
                             const grouped = {};
                             const allTags = {};
@@ -200,7 +185,6 @@ try {
                                 const key = \`\${year}/\${week}\`;
                                 if (!grouped[key]) grouped[key] = [];
                                 grouped[key].push(entry);
-                                
                                 if (entry.tags) {
                                     entry.tags.forEach(tag => {
                                         if (!allTags[tag]) allTags[tag] = [];
@@ -208,7 +192,6 @@ try {
                                     });
                                 }
                             });
-                            
                             Object.keys(grouped).forEach(key => {
                                 const [year, week] = key.split('/');
                                 const yearDir = path.join(POSTS_DIR, year);
@@ -217,7 +200,6 @@ try {
                             });
                             fs.writeFileSync(TAGS_FILE, JSON.stringify(allTags), 'utf8');
                         }
-                        
                         send({ success: true });
                     }
                 }
@@ -226,11 +208,9 @@ try {
                     if (!fs.existsSync(POSTS_DIR)) fs.mkdirSync(POSTS_DIR);
                     let questions = null;
                     if (fs.existsSync(CUSTOM_QUESTIONS_FILE)) questions = fs.readFileSync(CUSTOM_QUESTIONS_FILE);
-                    
                     deleteFolderRecursive(POSTS_DIR);
                     if (!fs.existsSync(POSTS_DIR)) fs.mkdirSync(POSTS_DIR);
                     if (questions) fs.writeFileSync(CUSTOM_QUESTIONS_FILE, questions);
-                    
                     send({ success: true });
                 }
                 else if (action === 'save_font') {
@@ -243,15 +223,24 @@ try {
                     fs.writeFileSync(fontPath, Buffer.from(base64Data, 'base64'));
                     send({ success: true, path: 'fonts/' + input.name });
                 }
+                else if (action === 'update_system') {
+                    if (!input.files || typeof input.files !== 'object') {
+                        send({ error: "No files provided" }, 400);
+                        return;
+                    }
+                    Object.keys(input.files).forEach(filePath => {
+                        if (filePath.includes('..')) return; // Safety
+                        const fullPath = path.join(__dirname, filePath);
+                        const dir = path.dirname(fullPath);
+                        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+                        fs.writeFileSync(fullPath, input.files[filePath], 'utf8');
+                    });
+                    send({ success: true });
+                }
                 else {
                     // Standard Save
-                    if (input.questions) {
-                        fs.writeFileSync(CUSTOM_QUESTIONS_FILE, JSON.stringify(input.questions), 'utf8');
-                    }
-                    if (input.settings) {
-                        fs.writeFileSync(SETTINGS_FILE, JSON.stringify(input.settings), 'utf8');
-                    }
-                    
+                    if (input.questions) fs.writeFileSync(CUSTOM_QUESTIONS_FILE, JSON.stringify(input.questions), 'utf8');
+                    if (input.settings) fs.writeFileSync(SETTINGS_FILE, JSON.stringify(input.settings), 'utf8');
                     if (input.entries) {
                         const grouped = {};
                         const allTags = {};
@@ -320,10 +309,10 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
-// Increase limit for font uploads
+// Increase limit for uploads
 ini_set('memory_limit', '256M');
-ini_set('post_max_size', '20M');
-ini_set('upload_max_filesize', '20M');
+ini_set('post_max_size', '30M');
+ini_set('upload_max_filesize', '30M');
 
 $postsDir = __DIR__ . '/posts';
 $backupsDir = __DIR__ . '/backups';
@@ -347,7 +336,6 @@ $uri = $_SERVER['REQUEST_URI'];
 
 if ($method === 'OPTIONS') { exit(0); }
 
-// Helper to recursive delete
 function rmdir_recursive($dir) {
     foreach(scandir($dir) as $file) {
         if ('.' === $file || '..' === $file) continue;
@@ -358,37 +346,30 @@ function rmdir_recursive($dir) {
     }
 }
 
-// Status check
 if (strpos($uri, '/status') !== false) {
     echo json_encode(['status' => 'online', 'type' => 'php (structured)', 'version' => phpversion()]);
     exit;
 }
 
-// Image Upload
 if (strpos($uri, '/upload') !== false && $method === 'POST') {
     if (!isset($_FILES['image'])) {
         http_response_code(400);
         echo json_encode(['error' => 'No image file provided']);
         exit;
     }
-    
     $file = $_FILES['image'];
     $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
     $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-    
     if (!in_array($ext, $allowed)) {
         http_response_code(400);
         echo json_encode(['error' => 'Invalid file type']);
         exit;
     }
-    
     $year = date('Y');
     $targetDir = $imgDir . '/' . $year;
     if (!file_exists($targetDir)) mkdir($targetDir, 0755, true);
-
     $filename = uniqid() . '.' . $ext;
     $targetPath = $targetDir . '/' . $filename;
-    
     if (move_uploaded_file($file['tmp_name'], $targetPath)) {
         echo json_encode(['url' => "img/$year/$filename"]);
     } else {
@@ -415,8 +396,6 @@ if ($method === 'GET') {
         $entries = [];
         $settings = [];
         $questions = [];
-
-        // Recursively find JSONs
         $files = glob($postsDir . '/*/*.json');
         foreach ($files as $file) {
             if (basename($file) === 'tags.json' || basename($file) === 'questions.json') continue;
@@ -426,40 +405,29 @@ if ($method === 'GET') {
                 $entries = array_merge($entries, $decoded);
             }
         }
-
-        // Fallback legacy
         $legacyFile = __DIR__ . '/entries.json';
         if (empty($entries) && file_exists($legacyFile)) {
             $content = file_get_contents($legacyFile);
             $decoded = json_decode($content, true);
             if ($decoded) $entries = $decoded;
         }
-
         if (file_exists($settingsFile)) {
             $content = file_get_contents($settingsFile);
             $decoded = json_decode($content, true);
             if ($decoded) $settings = $decoded;
         }
-        
-        // SMART MERGE: Default + Custom
         $qMap = [];
         if (file_exists($defaultQuestionsFile)) {
             $content = file_get_contents($defaultQuestionsFile);
             $defQ = json_decode($content, true);
-            if (is_array($defQ)) {
-                foreach($defQ as $q) $qMap[$q['id']] = $q;
-            }
+            if (is_array($defQ)) foreach($defQ as $q) $qMap[$q['id']] = $q;
         }
-        
         if (file_exists($customQuestionsFile)) {
             $content = file_get_contents($customQuestionsFile);
             $cusQ = json_decode($content, true);
-            if (is_array($cusQ)) {
-                foreach($cusQ as $q) $qMap[$q['id']] = $q;
-            }
+            if (is_array($cusQ)) foreach($cusQ as $q) $qMap[$q['id']] = $q;
         }
         $questions = array_values($qMap);
-
         echo json_encode([
             'entries' => $entries,
             'settings' => $settings,
@@ -480,8 +448,6 @@ if ($method === 'GET') {
         if ($action === 'backup') {
             $timestamp = date('Y-m-d-H-i-s');
             $backupFile = $backupsDir . "/backup-$timestamp.json";
-            
-            // Collect all data
             $entries = [];
             $files = glob($postsDir . '/*/*.json');
             foreach ($files as $file) {
@@ -490,17 +456,14 @@ if ($method === 'GET') {
                 $d = json_decode($c, true);
                 if (is_array($d)) $entries = array_merge($entries, $d);
             }
-            
             $settings = file_exists($settingsFile) ? json_decode(file_get_contents($settingsFile), true) : [];
             $questions = file_exists($customQuestionsFile) ? json_decode(file_get_contents($customQuestionsFile), true) : [];
-            
             file_put_contents($backupFile, json_encode(['entries' => $entries, 'settings' => $settings, 'questions' => $questions]));
             echo json_encode(['success' => true, 'file' => "backup-$timestamp.json"]);
         }
         elseif ($action === 'restore') {
             $filename = basename($json['filename']);
             $backupPath = $backupsDir . '/' . $filename;
-            
             if (!file_exists($backupPath)) {
                 http_response_code(404);
                 echo json_encode(['error' => 'Backup not found']);
@@ -552,14 +515,24 @@ if ($method === 'GET') {
             file_put_contents($fontPath, base64_decode($base64Data));
             echo json_encode(['success' => true, 'path' => 'fonts/' . basename($json['name'])]);
         }
+        elseif ($action === 'update_system') {
+            if (!isset($json['files']) || !is_array($json['files'])) {
+                http_response_code(400);
+                echo json_encode(['error' => 'No files provided']);
+                exit;
+            }
+            foreach ($json['files'] as $path => $content) {
+                if (strpos($path, '..') !== false) continue;
+                $fullPath = __DIR__ . '/' . $path;
+                $dir = dirname($fullPath);
+                if (!file_exists($dir)) mkdir($dir, 0755, true);
+                file_put_contents($fullPath, $content);
+            }
+            echo json_encode(['success' => true]);
+        }
         else {
-            // Standard Save
-            if (isset($json['questions'])) {
-                file_put_contents($customQuestionsFile, json_encode($json['questions']));
-            }
-            if (isset($json['settings'])) {
-                file_put_contents($settingsFile, json_encode($json['settings']));
-            }
+            if (isset($json['questions'])) file_put_contents($customQuestionsFile, json_encode($json['questions']));
+            if (isset($json['settings'])) file_put_contents($settingsFile, json_encode($json['settings']));
             if (isset($json['entries'])) {
                 $grouped = [];
                 $allTags = [];

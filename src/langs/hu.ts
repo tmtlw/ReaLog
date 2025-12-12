@@ -210,8 +210,14 @@ const hu = {
         new_version: 'Új verzió elérhető',
         uptodate: 'A rendszer naprakész',
         update_error: 'Hiba a verzió ellenőrzésekor',
-        update_btn: 'Frissítés',
+        update_btn: 'Frissítés Telepítése',
         whats_new: 'Újdonságok'
+    },
+    update: {
+        in_progress: 'Frissítés folyamatban...',
+        success: 'Sikeres frissítés!',
+        failed: 'Frissítési hiba',
+        retry: 'Újrapróbálkozás'
     },
     tags: {
         manager_title: 'Címke Menedzser',

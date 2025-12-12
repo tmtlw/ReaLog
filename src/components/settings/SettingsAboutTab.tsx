@@ -1,8 +1,9 @@
 
-import React from 'react';
-import { Info, ExternalLink, Heart, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Info, ExternalLink, Heart, AlertTriangle, CheckCircle2, Download } from 'lucide-react';
 import { Button } from '../ui';
 import { APP_VERSION, CHANGELOG } from '../../changelog';
+import UpdateModal from '../modals/UpdateModal';
 
 interface SettingsAboutTabProps {
     themeClasses: any;
@@ -13,6 +14,7 @@ interface SettingsAboutTabProps {
 }
 
 const SettingsAboutTab: React.FC<SettingsAboutTabProps> = ({ themeClasses, t, isCheckingUpdate, updateInfo, cardBg }) => {
+    const [showUpdateModal, setShowUpdateModal] = useState(false);
     
     // Determine Update State
     const hasError = updateInfo?.error;
@@ -21,6 +23,8 @@ const SettingsAboutTab: React.FC<SettingsAboutTabProps> = ({ themeClasses, t, is
 
     return (
         <div className="flex flex-col flex-1 min-h-0 relative isolate animate-fade-in">
+            {showUpdateModal && <UpdateModal onClose={() => setShowUpdateModal(false)} themeClasses={themeClasses} t={t} />}
+            
             <style>{`
                 .lobster-font-important {
                     font-family: 'Lobster', cursive !important;
@@ -58,10 +62,10 @@ const SettingsAboutTab: React.FC<SettingsAboutTabProps> = ({ themeClasses, t, is
                                 <Button 
                                     size="sm" 
                                     themeClasses={themeClasses} 
-                                    onClick={() => window.open(updateInfo?.url, '_blank')}
+                                    onClick={() => setShowUpdateModal(true)}
                                     className="animate-bounce mt-1"
                                 >
-                                    <ExternalLink className="w-3 h-3" /> {t('settings.update_btn')}
+                                    <Download className="w-3 h-3" /> {t('settings.update_btn')}
                                 </Button>
                                 
                                 {updateInfo && updateInfo.changes.length > 0 && (
