@@ -8,11 +8,11 @@ import {
   ThermometerSun, Menu, Code, LogOut, CheckCircle2, AlertCircle, CloudLightning, HardDrive,
   Wifi, WifiOff, Database, Activity, ChevronUp, Terminal, Copy, FileText, FileCode, User,
   Globe, Layers, Shield, ShieldAlert, Clock, Bold, Italic, Underline, Link as LinkIcon, AlignLeft,
-  Recycle, Hash, PieChart, CalendarClock, Filter, Edit2
+  Recycle, Hash, PieChart, CalendarClock, Filter, Edit2, BookOpen, Images
 } from 'lucide-react';
-import { AppData, Category, Entry, WeatherData, ThemeOption, CategoryConfig, PublicConfig, Template, WeatherIconPack } from './types';
+import { AppData, Category, Entry, WeatherData, ThemeOption, CategoryConfig, PublicConfig, Template, WeatherIconPack, EmojiStyle, AppSettings } from './types';
 import { CATEGORY_LABELS, DEMO_PASSWORD, INITIAL_DATA, DEFAULT_QUESTIONS, CATEGORY_COLORS, CATEGORY_BORDER_COLORS } from './constants';
-import { THEMES, generateCustomTheme } from './constants/theme';
+import { THEMES, generateCustomTheme, getHolidayTheme, HOLIDAY_THEMES } from './constants/theme';
 import * as StorageService from './services/storage';
 import { getTranslation, Language } from './services/i18n';
 
@@ -29,7 +29,8 @@ import QuestionManager from './components/views/QuestionManager';
 import StatsView from './components/views/StatsView';
 import TagManager from './components/views/TagManager';
 import StreakView from './components/views/StreakView';
-import WeatherRenderer from './components/ui/WeatherRenderer'; // New Import
+import WeatherRenderer from './components/ui/WeatherRenderer'; 
+import EmojiRenderer from './components/ui/EmojiRenderer';
 
 // Modals
 import ExportModal from './components/modals/ExportModal';
@@ -53,6 +54,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'entries' | 'questions'>('entries');
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [logoEmoji, setLogoEmoji] = useState<string | null>(null);
   
   // --- INFINITE SCROLL STATE ---
   const [visibleCount, setVisibleCount] = useState(12);
@@ -83,6 +85,7 @@ export default function App() {
   const [passwordInput, setPasswordInput] = useState("");
   const [showExportModal, setShowExportModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<'views' | 'public' | 'account' | 'about' | 'data'>('account');
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [showThemeEditor, setShowThemeEditor] = useState(false);
   const [showStorageMenu, setShowStorageMenu] = useState(false);
@@ -108,14 +111,17 @@ export default function App() {
       return text;
   };
   const getCatLabel = (cat: Category) => t(`category.${cat.toLowerCase()}`);
-  const appName = data.settings?.userName ? `${data.settings.userName}Log` : 'ReaLog';
+  
+  // Dynamic App Name Logic
+  const [appName, setAppName] = useState('ReaLog');
 
   // --- DERIVED STATE ---
-  const showStats = data.settings?.enableStats !== false; // Default true if undefined
-  const showGamification = data.settings?.enableGamification !== false; // Default true
-  const weatherPack: WeatherIconPack = data.settings?.weatherIconPack || 'outline'; // Default Outline
+  const showStats = data.settings?.enableStats !== false; 
+  const showGamification = data.settings?.enableGamification !== false; 
+  const weatherPack: WeatherIconPack = data.settings?.weatherIconPack || 'outline'; 
+  const emojiStyle: EmojiStyle = data.settings?.emojiStyle || 'native'; 
 
-  // Calculate Streak
+  // Calculate Streak (logic same as before)
   const getStreakInfo = () => {
       const dates = data.entries
           .filter(e => !e.isTrashed && e.timestamp <= Date.now())
@@ -132,7 +138,7 @@ export default function App() {
       
       if (uniqueDates[0] === today || uniqueDates[0] === yesterday) {
           streak = 1;
-          let prevDate = uniqueDates[0];
+          let prevDate = uniqueDates[0] as number;
           for (let i = 1; i < uniqueDates.length; i++) {
               const currentDate = uniqueDates[i] as number;
               if (prevDate - currentDate === 86400000) { 
@@ -147,14 +153,12 @@ export default function App() {
       // Longest Streak
       let longest = 0;
       let currentSeq = 1;
-      
-      // Sort ascending for longest calculation
       const sortedAsc = [...uniqueDates].sort((a,b) => a-b);
       
       if(sortedAsc.length > 0) longest = 1;
 
       for (let i = 1; i < sortedAsc.length; i++) {
-          if (sortedAsc[i] - sortedAsc[i-1] === 86400000) {
+          if ((sortedAsc[i] as number) - (sortedAsc[i-1] as number) === 86400000) {
               currentSeq++;
           } else {
               if (currentSeq > longest) longest = currentSeq;
@@ -179,7 +183,6 @@ export default function App() {
             setIsAdmin(true);
         }
 
-        // Setup background sync listener
         StorageService.setupBackgroundSync(
             () => { setSyncStatus('syncing'); setSystemMessage("Szinkronizálás..."); },
             (success) => {
@@ -201,9 +204,6 @@ export default function App() {
             setSyncStatus('syncing');
             const serverData = await StorageService.serverLoad();
             if (serverData) {
-                if (!serverData.questions || serverData.questions.length === 0) {
-                    // Logic to reload questions based on default if missing
-                }
                 setData({ ...serverData, settings: { ...local.settings, ...serverData.settings } });
                 setSyncStatus('success');
                 setLastSyncTime(Date.now());
@@ -222,6 +222,25 @@ export default function App() {
 
   // Theme Application Logic
   useEffect(() => {
+      const activeHolidayId = data.settings?.activeHoliday;
+      let holiday = null;
+      if (activeHolidayId) {
+          holiday = HOLIDAY_THEMES.find(h => h.id === activeHolidayId);
+      } else {
+          holiday = getHolidayTheme(new Date());
+      }
+
+      setLogoEmoji(holiday ? holiday.emoji : null);
+
+      if (holiday) {
+          setThemeClasses(holiday.colors);
+          document.body.className = holiday.colors.bg;
+          setAppName(holiday.getDisplayDate(new Date().getFullYear()));
+          return;
+      }
+
+      setAppName(data.settings?.userName ? `${data.settings.userName}Log` : 'ReaLog');
+      
       let targetTheme = currentTheme;
       if (currentTheme === 'system') targetTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 
@@ -243,7 +262,7 @@ export default function App() {
           setThemeClasses(classes);
           document.body.className = classes.bg;
       }
-  }, [currentTheme, data.settings?.customTheme]); 
+  }, [currentTheme, data.settings?.customTheme, data.settings?.activeHoliday]); 
 
   // Typography Injection
   useEffect(() => {
@@ -257,20 +276,25 @@ export default function App() {
       }
 
       let css = '';
+      if (fontSize) css += `:root { font-size: ${fontSize}px; } `;
       
-      // Font Size Base
-      if (fontSize) {
-          css += `:root { font-size: ${fontSize}px; } `;
+      // Inject Local Emoji Font Logic if enabled and using offline fonts
+      if (data.settings?.offlineFonts) {
+          // Point to local folder relative to index.html
+          css += `@font-face { font-family: 'OpenMoji'; src: url('fonts/OpenMoji-Color.woff2') format('woff2'); } `;
+          css += `@font-face { font-family: 'Emojidex'; src: url('fonts/emojidex-monospaced.woff2') format('woff2'); } `;
       }
 
-      // Font Family
       if (fontFamily) {
           const finalFamily = (fontFamily === 'Custom' && customFontName) ? customFontName : fontFamily;
-          
           if (fontFamily === 'Custom' && customFontName && customFontData) {
-              css += `@font-face { font-family: '${customFontName}'; src: url('${customFontData}') format('truetype'); } `;
+              // Check if customFontData is a path (starts with fonts/) or base64
+              const src = customFontData.startsWith('fonts/') 
+                  ? `url('${customFontData}')` 
+                  : `url('${customFontData}')`;
+              
+              css += `@font-face { font-family: '${customFontName}'; src: ${src} format('woff2'); } `;
           } else if (fontFamily !== 'Custom') {
-              // Inject Google Font link if needed
               const linkId = 'google-font-link';
               let link = document.getElementById(linkId) as HTMLLinkElement;
               if (!link) {
@@ -279,17 +303,13 @@ export default function App() {
                   link.rel = 'stylesheet';
                   document.head.appendChild(link);
               }
-              // Basic weights
               link.href = `https://fonts.googleapis.com/css2?family=${fontFamily.replace(/ /g, '+')}:wght@400;700&display=swap`;
           }
-
-          // Aggressive global injection - Apply to ALL elements to override Tailwind specific classes
-          css += `* { font-family: '${finalFamily}', sans-serif !important; } `;
+          // Only override specific elements to not break icon fonts or special fonts like Lobster
+          css += `body, button, input, textarea, select { font-family: '${finalFamily}', sans-serif !important; } `;
       }
-
       styleTag.textContent = css;
-
-  }, [data.settings?.typography]);
+  }, [data.settings?.typography, data.settings?.emojiStyle, data.settings?.offlineFonts]);
 
   useEffect(() => {
       if (activeCategory) {
@@ -306,29 +326,23 @@ export default function App() {
     if(isAppLoading) return;
 
     if (serverMode && isAdmin) {
-        // Detect if this is an auto-save or manual save
         const isAuto = syncStatus === 'auto_syncing';
         if (!isAuto) setSyncStatus('syncing');
 
         saveTimeoutRef.current = setTimeout(async () => {
             try {
                 const response = await StorageService.serverSave(data);
-                
                 if (response && response.message && response.message !== 'success') {
                      setSystemMessage(`PHP: ${response.message}`);
-                } else if (typeof response === 'string' && response.includes('<b>')) {
-                     setSystemMessage("PHP Error Log Detected");
                 }
-
                 setSyncStatus(isAuto ? 'auto_success' : 'success');
                 setLastSyncTime(Date.now());
                 if (!systemMessage.startsWith("PHP")) setSystemMessage("");
                 setTimeout(() => setSyncStatus('idle'), 2000);
             } catch (e: any) {
-                // If error is strictly offline related, warn but don't panic
                 if (e.message.includes('Offline')) {
                     setSystemMessage(t('server.offline_mode'));
-                    setSyncStatus('idle'); // Back to idle (dirty state is handled in storage)
+                    setSyncStatus('idle'); 
                 } else {
                     setSyncStatus('error');
                     setSystemMessage(`${t('status.save_error')} ${e.message || ''}`);
@@ -339,45 +353,35 @@ export default function App() {
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, [data, serverMode, isAdmin]);
 
-  // --- AUTO SAVE LOGIC (Every Minute) ---
+  // --- AUTO SAVE ---
   useEffect(() => {
       if (isEditing && draftEntry.id) {
           if (autoSaveIntervalRef.current) clearInterval(autoSaveIntervalRef.current);
-          autoSaveIntervalRef.current = setInterval(() => {
-              performAutoSave();
-          }, 60000); // 1 minute
+          autoSaveIntervalRef.current = setInterval(() => performAutoSave(), 60000);
       } else {
           if (autoSaveIntervalRef.current) clearInterval(autoSaveIntervalRef.current);
       }
       return () => { if (autoSaveIntervalRef.current) clearInterval(autoSaveIntervalRef.current); };
   }, [isEditing, draftEntry]); 
 
-  // --- INFINITE SCROLL LOGIC ---
+  // --- INFINITE SCROLL ---
   useEffect(() => {
-      // Reset visible count on filter/category changes
       setVisibleCount(12);
   }, [activeCategory, globalView, searchQuery, filterStart, filterEnd, filterMood, filterHasPhoto]);
 
   const filteredEntriesAll = React.useMemo(() => {
-      // Re-use logic to get all filtered entries
       let entries = data.entries;
-      
-      // Privacy Filter
       if (!isAdmin) entries = entries.filter(e => !e.isPrivate);
 
-      // TRASH VIEW (Admin only)
       if (globalView === 'trash') {
           return entries.filter(e => e.isTrashed).sort((a, b) => b.timestamp - a.timestamp);
       }
 
-      // NORMAL VIEWS: Exclude trash
       entries = entries.filter(e => !e.isTrashed);
 
-      if (globalView === 'stats' || globalView === 'streak') {
-          return entries; // Stats/Streak needs all valid entries
+      if (globalView === 'stats' || globalView === 'streak' || globalView === 'atlas' || globalView === 'gallery') {
+          return entries; 
       }
-
-      if (globalView === 'atlas' || globalView === 'gallery') return entries;
 
       if (globalView === 'onThisDay') {
           const today = new Date();
@@ -403,13 +407,12 @@ export default function App() {
 
       entries = entries.filter(e => allowedCategories.includes(e.category));
       
-      // --- INTELLIGENT FILTERS ---
       if (filterStart) {
           const startTs = new Date(filterStart).getTime();
           entries = entries.filter(e => e.timestamp >= startTs);
       }
       if (filterEnd) {
-          const endTs = new Date(filterEnd).getTime() + 86400000; // End of that day
+          const endTs = new Date(filterEnd).getTime() + 86400000;
           entries = entries.filter(e => e.timestamp <= endTs);
       }
       if (filterMood) {
@@ -419,7 +422,6 @@ export default function App() {
           entries = entries.filter(e => (e.photos && e.photos.length > 0) || e.photo);
       }
 
-      // Text Search
       if (searchQuery) {
           const q = searchQuery.toLowerCase();
           entries = entries.filter(e => 
@@ -433,7 +435,6 @@ export default function App() {
       return entries.sort((a, b) => b.timestamp - a.timestamp);
   }, [data.entries, activeCategory, globalView, isAdmin, searchQuery, filterStart, filterEnd, filterMood, filterHasPhoto]);
 
-  // Infinite Scroll Observer
   useEffect(() => {
       const observer = new IntersectionObserver((entries) => {
           if (entries[0].isIntersecting) {
@@ -449,11 +450,9 @@ export default function App() {
   }, [filteredEntriesAll.length, loadMoreRef.current]);
 
   const visibleEntries = React.useMemo(() => {
-      // For Atlas and Calendar, return ALL entries (they have their own clustering/pagination logic)
       if (globalView === 'atlas' || (globalView === 'none' && viewMode === 'calendar')) {
           return filteredEntriesAll;
       }
-      // For List/Grid/Gallery/Trash/Tags/OnThisDay, apply slicing
       return filteredEntriesAll.slice(0, visibleCount);
   }, [filteredEntriesAll, visibleCount, globalView, viewMode]);
 
@@ -467,7 +466,7 @@ export default function App() {
       }));
   };
 
-  // --- HELPER FUNCTIONS ---
+  // --- ACTIONS ---
 
   const resetEditor = () => {
       setIsEditing(false);
@@ -496,22 +495,12 @@ export default function App() {
       }
   };
 
-  // --- TEMPLATE MANAGERS ---
   const saveTemplate = (name: string, questions: string[], isDefault: boolean = false) => {
-      const newTemplate: Template = {
-          id: crypto.randomUUID(),
-          name,
-          questions,
-          category: activeCategory,
-          isDefault
-      };
-      
-      // If setting as default, unset others in this category
+      const newTemplate: Template = { id: crypto.randomUUID(), name, questions, category: activeCategory, isDefault };
       let newTemplates = [...(data.templates || [])];
       if (isDefault) {
           newTemplates = newTemplates.map(t => t.category === activeCategory ? { ...t, isDefault: false } : t);
       }
-      
       setData(prev => ({ ...prev, templates: [...newTemplates, newTemplate] }));
       alert(t('templates.saved'));
   };
@@ -529,6 +518,7 @@ export default function App() {
     let label = today.toISOString().slice(0, 10);
     
     if (activeCategory === Category.WEEKLY) {
+        // ... (weekly label logic) ...
         const d = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
         const dayNum = d.getUTCDay() || 7;
         d.setUTCDate(d.getUTCDate() + 4 - dayNum);
@@ -541,18 +531,14 @@ export default function App() {
 
     const activeQuestions = data.questions.filter(q => q.category === activeCategory && q.isActive);
     const initialResponses: Record<string, string> = {};
-    
-    // Check for default template
     const defaultTemplate = data.templates?.find(t => t.isDefault && t.category === activeCategory);
 
     if (defaultTemplate) {
         defaultTemplate.questions.forEach(qText => {
-            // Find ID for the question text
             const q = data.questions.find(qx => qx.text === qText && qx.category === activeCategory);
             if (q) initialResponses[q.id] = "";
         });
     } else {
-        // If no template, use first 6 active questions
         activeQuestions.slice(0, 6).forEach(q => initialResponses[q.id] = "");
     }
 
@@ -568,9 +554,9 @@ export default function App() {
       isPrivate: true, 
       isLocationPrivate: false,
       tags: [],
-      isDraft: true,
+      isDraft: true, // NEW DRAFT
       isTrashed: false,
-      photos: [] // Initialize empty array
+      photos: []
     };
 
     setSyncStatus('auto_syncing');
@@ -588,11 +574,8 @@ export default function App() {
 
   const editEntry = (entry: Entry) => {
       if(isEditing && draftEntry.id) performAutoSave();
-
-      // Normalize photos on edit if legacy only exists
       const entryCopy = JSON.parse(JSON.stringify(entry));
       if (!entryCopy.photos) entryCopy.photos = entryCopy.photo ? [entryCopy.photo] : [];
-
       setDraftEntry(entryCopy);
       setLocationParts(entry.location ? entry.location.split(', ') : []);
       setIsEditing(true);
@@ -603,7 +586,6 @@ export default function App() {
   const saveEntry = () => {
     if (!draftEntry.id) return;
     setSyncStatus('syncing');
-
     const finalEntry = { ...draftEntry } as Entry;
     if (!finalEntry.title?.trim()) finalEntry.title = finalEntry.dateLabel;
     
@@ -627,7 +609,6 @@ export default function App() {
       ...prev,
       entries: prev.entries.map(e => e.id === finalEntry.id ? finalEntry : e)
     }));
-    
     resetEditor();
   };
 
@@ -663,19 +644,29 @@ export default function App() {
       }
   };
 
+  const emptyTrash = () => {
+      if(window.confirm(t('common.confirm_empty_trash'))) {
+          setSyncStatus('syncing');
+          setData(prev => ({
+              ...prev,
+              entries: prev.entries.filter(e => !e.isTrashed)
+          }));
+      }
+  };
+
   const handleEditorChange = (updates: Partial<Entry>) => {
       setDraftEntry(prev => ({ ...prev, ...updates }));
       setIsDirty(true);
   };
 
   const handleEditorCancel = () => {
-      if (isDirty) {
-          if (window.confirm(t('common.confirm_discard_changes'))) {
-              resetEditor(); // Just reset state, don't move to trash
-          }
-      } else {
-          resetEditor();
+      // If it was a new entry (still a draft and not saved as final), discard it completely
+      if (draftEntry.isDraft) {
+           setData(prev => ({ ...prev, entries: prev.entries.filter(e => e.id !== draftEntry.id) }));
       }
+      // If it was an existing entry being edited, logic above ignores it (since isDraft is likely false if it was previously saved),
+      // effectively reverting changes because we just reset the editor state without saving.
+      resetEditor();
   };
 
   const handleLogout = () => {
@@ -716,20 +707,16 @@ export default function App() {
 
         if (window.confirm(t('app.import_confirm'))) {
            if (importedData) {
-              // Normalize entries on import to ensure backward compatibility
               if (importedData.entries) {
                   importedData.entries = importedData.entries.map(e => ({
                       ...e,
-                      // Ensure photos array exists if legacy photo string is present
                       photos: e.photos || (e.photo ? [e.photo] : []),
-                      // Ensure tags exist
                       tags: e.tags || []
                   }));
               }
               setData(importedData);
               if (importedData.settings?.theme) setCurrentTheme(importedData.settings.theme);
            } else if (importedEntries.length > 0) {
-              // Normalize entries from WXR (usually handled in importFromWxr but safe to double check)
               const normalizedEntries = importedEntries.map(e => ({
                   ...e,
                   photos: e.photos || (e.photo ? [e.photo] : []),
@@ -786,7 +773,6 @@ export default function App() {
   };
 
   const renderTagCloud = () => {
-      // If Tag Manager is active, render it instead
       if (showTagManager) {
           return (
               <div className="space-y-6">
@@ -804,10 +790,6 @@ export default function App() {
           );
       }
 
-      // getFilteredEntries is used locally here just to count tags, logic remains same
-      // Note: for cloud we might want global stats or current view stats. 
-      // Current implementation respects filters.
-      const filtered = visibleEntries; // Use visibleEntries to match listing, or filteredEntriesAll for total count? Usually tag cloud shows global or filtered context. Let's use filteredEntriesAll for counts to be accurate to filter.
       const tagCounts: Record<string, number> = {};
       const sourceEntries = searchQuery.startsWith('#') ? data.entries.filter(e => (!e.isPrivate || isAdmin) && !e.isTrashed) : filteredEntriesAll;
 
@@ -853,16 +835,16 @@ export default function App() {
                       <h4 className="font-bold mb-4 opacity-70">{t('app.entries_with_tag')} <span className="text-emerald-500">{searchQuery}</span></h4>
                       <EntryList 
                         viewMode="grid" 
-                        entries={visibleEntries} // Use sliced entries
+                        entries={visibleEntries} 
                         onSelectEntry={setSelectedEntry}
                         renderActionButtons={renderActionButtons}
                         themeClasses={themeClasses}
                         isAdmin={isAdmin}
                         t={t}
                         gridLayout={data.settings?.gridLayout}
-                        weatherPack={weatherPack} // Prop passed
+                        weatherPack={weatherPack} 
+                        emojiStyle={emojiStyle}
                       />
-                      {/* Sentinel for Infinite Scroll */}
                       {visibleCount < filteredEntriesAll.length && (
                           <div ref={loadMoreRef} className="h-20 flex items-center justify-center opacity-50">
                               <RefreshCw className="w-6 h-6 animate-spin" />
@@ -874,12 +856,8 @@ export default function App() {
       );
   };
 
-  // Determine main image for the selected entry (prefer array, fallback legacy)
   const mainImage = selectedEntry ? (selectedEntry.photos && selectedEntry.photos.length > 0 ? selectedEntry.photos[0] : selectedEntry.photo) : null;
-  // Use all available images for the gallery logic
   const galleryImages = selectedEntry?.photos || (selectedEntry?.photo ? [selectedEntry.photo] : []);
-
-  // Collect unique moods for filter
   const availableMoods = Array.from(new Set(data.entries.map(e => e.mood).filter(Boolean)));
 
   return (
@@ -910,7 +888,6 @@ export default function App() {
             </div>
         )}
 
-        {/* Lightbox / Fullscreen Image Overlay */}
         {fullscreenImage && (
             <div className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={() => setFullscreenImage(null)}>
                 <img src={fullscreenImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Fullscreen" />
@@ -919,7 +896,7 @@ export default function App() {
         )}
 
         {showExportModal && <ExportModal onClose={() => attemptNavigation(() => setShowExportModal(false))} data={data} onImport={handleImport} themeClasses={themeClasses} currentTheme={currentTheme} t={t} />}
-        {showSettingsModal && <SettingsModal onClose={() => attemptNavigation(() => setShowSettingsModal(false))} data={data} setData={setData} themeClasses={themeClasses} currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} t={t} />}
+        {showSettingsModal && <SettingsModal onClose={() => attemptNavigation(() => setShowSettingsModal(false))} data={data} setData={setData} themeClasses={themeClasses} currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} t={t} initialTab={settingsInitialTab} />}
         {showDeployModal && <DeployModal onClose={() => attemptNavigation(() => setShowDeployModal(false))} themeClasses={themeClasses} t={t} />}
         {showThemeEditor && <ThemeEditorModal onClose={() => attemptNavigation(() => setShowThemeEditor(false))} data={data} setData={setData} currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} themeClasses={themeClasses} t={t} />}
         
@@ -928,7 +905,6 @@ export default function App() {
              setServerMode(m === 'server');
         }} serverMode={serverMode} lastError={systemMessage} themeClasses={themeClasses} t={t} />}
 
-        {/* Detail View Modal */}
         {selectedEntry && (
             <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-fade-in" onClick={() => setSelectedEntry(null)}>
                 <div 
@@ -938,12 +914,12 @@ export default function App() {
                    <div className={`sticky top-0 z-10 flex justify-between items-center p-4 border-b border-current border-opacity-10 backdrop-blur ${themeClasses.bg}/90`}>
                         <div className="flex gap-2">
                              <Button size="sm" variant="secondary" themeClasses={themeClasses} onClick={() => {
-                                 const filtered = filteredEntriesAll; // Use all filtered entries for navigation
+                                 const filtered = filteredEntriesAll; 
                                  const idx = filtered.findIndex(e => e.id === selectedEntry.id);
                                  if (idx !== -1 && idx < filtered.length - 1) setSelectedEntry(filtered[idx + 1]);
                              }}><ChevronLeft className="w-4 h-4" /></Button>
                              <Button size="sm" variant="secondary" themeClasses={themeClasses} onClick={() => {
-                                 const filtered = filteredEntriesAll; // Use all filtered entries for navigation
+                                 const filtered = filteredEntriesAll; 
                                  const idx = filtered.findIndex(e => e.id === selectedEntry.id);
                                  if (idx > 0) setSelectedEntry(filtered[idx - 1]);
                              }}><ChevronRight className="w-4 h-4" /></Button>
@@ -977,7 +953,7 @@ export default function App() {
                                     </div>
                                 )}
                             </div>
-                            {selectedEntry.mood && <div className="text-4xl">{selectedEntry.mood}</div>}
+                            {selectedEntry.mood && <EmojiRenderer emoji={selectedEntry.mood} style={emojiStyle} className="text-4xl" />}
                         </div>
 
                         {selectedEntry.photo && (
@@ -1003,7 +979,6 @@ export default function App() {
                             )}
                         </div>
 
-                        {/* Gallery Section - Masonry Style with Lightbox Click */}
                         {galleryImages.length > 0 && (
                             <div className="pt-8 border-t border-current border-opacity-10">
                                 <h3 className={`text-lg font-bold mb-4 flex items-center gap-2 ${themeClasses.accent}`}><ImageIcon className="w-5 h-5" /> {t('app.photo_gallery')}</h3>
@@ -1018,6 +993,23 @@ export default function App() {
                                             />
                                         </div>
                                     ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Interactive Map at Bottom */}
+                        {selectedEntry.gps && !selectedEntry.isLocationPrivate && (
+                            <div className="pt-8 border-t border-current border-opacity-10">
+                                <h3 className={`text-lg font-bold mb-4 flex items-center gap-2 ${themeClasses.accent}`}><MapIcon className="w-5 h-5" /> {t('nav.map')}</h3>
+                                <div className="h-64 md:h-80 w-full rounded-lg overflow-hidden border border-current border-opacity-10">
+                                    <AtlasView 
+                                        entries={[{...selectedEntry} as Entry]} 
+                                        activeCategory={activeCategory} 
+                                        onSelectEntry={() => {}} 
+                                        themeClasses={themeClasses} 
+                                        showAll={true}
+                                        emojiStyle={emojiStyle} 
+                                    />
                                 </div>
                             </div>
                         )}
@@ -1053,7 +1045,7 @@ export default function App() {
             isAdmin={isAdmin}
             onOpenExport={() => attemptNavigation(() => setShowExportModal(true))}
             onOpenDeploy={() => attemptNavigation(() => setShowDeployModal(true))}
-            onOpenSettings={() => attemptNavigation(() => setShowSettingsModal(true))}
+            onOpenSettings={(tab) => attemptNavigation(() => { setSettingsInitialTab(tab || 'account'); setShowSettingsModal(true); })}
             onOpenThemeEditor={() => attemptNavigation(() => setShowThemeEditor(true))}
             onLogout={handleLogout}
             onOpenAuth={() => setShowAuthModal(true)}
@@ -1064,6 +1056,7 @@ export default function App() {
             showStats={showStats && isAdmin}
             showGamification={showGamification && isAdmin}
             currentStreak={streakInfo.current}
+            logoEmoji={logoEmoji}
         />
 
         <main className="flex-1 max-w-6xl mx-auto w-full p-4 pb-24">
@@ -1085,25 +1078,25 @@ export default function App() {
                     templates={data.templates}
                     onSaveTemplate={saveTemplate}
                     onDeleteTemplate={deleteTemplate}
+                    onUpdateSettings={(newSettings) => setData(prev => ({ ...prev, settings: { ...prev.settings, ...newSettings } }))}
                     themeClasses={themeClasses}
                     currentTheme={currentTheme}
-                    locationParts={locationParts}
-                    setLocationParts={setLocationParts}
                     serverMode={serverMode}
                     t={t}
                     currentLang={currentLang}
+                    locationParts={locationParts}
+                    setLocationParts={setLocationParts}
                     entries={data.entries}
                 />
             ) : globalView === 'atlas' ? (
                 <div className="space-y-4">
                     <h2 className="text-xl font-bold flex items-center gap-2"><Globe className="w-5 h-5" /> {t('app.world_map')}</h2>
-                    <AtlasView entries={visibleEntries} activeCategory={activeCategory} onSelectEntry={setSelectedEntry} themeClasses={themeClasses} showAll={true} isAdmin={isAdmin} t={t} />
+                    <AtlasView entries={visibleEntries} activeCategory={activeCategory} onSelectEntry={setSelectedEntry} themeClasses={themeClasses} showAll={true} isAdmin={isAdmin} t={t} emojiStyle={emojiStyle} />
                 </div>
             ) : globalView === 'gallery' ? (
                 <div className="space-y-4">
-                     <h2 className="text-xl font-bold flex items-center gap-2"><ImageIcon className="w-5 h-5" /> {t('app.photo_gallery')}</h2>
+                     <h2 className="text-xl font-bold flex items-center gap-2"><Images className="w-5 h-5" /> {t('app.photo_gallery')}</h2>
                      <GalleryView entries={visibleEntries} onSelectEntry={setSelectedEntry} themeClasses={themeClasses} renderActionButtons={renderActionButtons} t={t} />
-                     {/* Sentinel for Infinite Scroll */}
                      {visibleCount < filteredEntriesAll.length && (
                           <div ref={loadMoreRef} className="h-20 flex items-center justify-center opacity-50">
                               <RefreshCw className="w-6 h-6 animate-spin" />
@@ -1119,7 +1112,8 @@ export default function App() {
                         t={t} 
                         savedLayout={data.settings?.statsLayout}
                         onSaveLayout={(order) => setData(prev => ({ ...prev, settings: { ...prev.settings, statsLayout: order } }))}
-                        weatherPack={weatherPack} // Pass Pack
+                        weatherPack={weatherPack}
+                        emojiStyle={emojiStyle}
                     />
                 </div>
             ) : globalView === 'streak' ? (
@@ -1147,9 +1141,9 @@ export default function App() {
                         isAdmin={isAdmin}
                         t={t}
                         gridLayout={data.settings?.gridLayout}
-                        weatherPack={weatherPack} // Pass Pack
+                        weatherPack={weatherPack} 
+                        emojiStyle={emojiStyle}
                     />
-                    {/* Sentinel for Infinite Scroll */}
                     {visibleCount < filteredEntriesAll.length && (
                           <div ref={loadMoreRef} className="h-20 flex items-center justify-center opacity-50">
                               <RefreshCw className="w-6 h-6 animate-spin" />
@@ -1158,10 +1152,17 @@ export default function App() {
                 </div>
             ) : globalView === 'trash' ? (
                 <div className="space-y-4">
-                    <h2 className="text-xl font-bold flex items-center gap-2 text-red-500">
-                        <Trash2 className="w-5 h-5" /> 
-                        {t('common.trash')}
-                    </h2>
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-xl font-bold flex items-center gap-2 text-red-500">
+                            <Trash2 className="w-5 h-5" /> 
+                            {t('common.trash')}
+                        </h2>
+                        {filteredEntriesAll.length > 0 && (
+                            <Button variant="danger" size="sm" onClick={emptyTrash} themeClasses={themeClasses}>
+                                <Trash2 className="w-4 h-4" /> {t('common.empty_trash_btn')}
+                            </Button>
+                        )}
+                    </div>
                     {filteredEntriesAll.length === 0 ? (
                         <p className="text-center opacity-50 py-10">{t('common.empty_trash')}</p>
                     ) : (
@@ -1174,9 +1175,9 @@ export default function App() {
                                 themeClasses={themeClasses}
                                 isAdmin={isAdmin}
                                 t={t}
-                                weatherPack={weatherPack} // Pass Pack
+                                weatherPack={weatherPack} 
+                                emojiStyle={emojiStyle}
                             />
-                            {/* Sentinel for Infinite Scroll */}
                             {visibleCount < filteredEntriesAll.length && (
                                 <div ref={loadMoreRef} className="h-20 flex items-center justify-center opacity-50">
                                     <RefreshCw className="w-6 h-6 animate-spin" />
@@ -1197,7 +1198,7 @@ export default function App() {
                                         <button onClick={() => handleViewModeChange('timeline')} className={`p-1.5 rounded transition-colors ${viewMode === 'timeline' ? themeClasses.primaryBtn : 'opacity-50 hover:opacity-100'}`} title="Timeline"><List className="w-4 h-4" /></button>
                                         <button onClick={() => handleViewModeChange('calendar')} className={`p-1.5 rounded transition-colors ${viewMode === 'calendar' ? themeClasses.primaryBtn : 'opacity-50 hover:opacity-100'}`} title="Calendar"><Calendar className="w-4 h-4" /></button>
                                         <button onClick={() => handleViewModeChange('atlas')} className={`p-1.5 rounded transition-colors ${viewMode === 'atlas' ? themeClasses.primaryBtn : 'opacity-50 hover:opacity-100'}`} title="Map"><MapIcon className="w-4 h-4" /></button>
-                                        <button onClick={() => handleViewModeChange('gallery')} className={`p-1.5 rounded transition-colors ${viewMode === 'gallery' ? themeClasses.primaryBtn : 'opacity-50 hover:opacity-100'}`} title="Gallery"><ImageIcon className="w-4 h-4" /></button>
+                                        <button onClick={() => handleViewModeChange('gallery')} className={`p-1.5 rounded transition-colors ${viewMode === 'gallery' ? themeClasses.primaryBtn : 'opacity-50 hover:opacity-100'}`} title="Gallery"><Images className="w-4 h-4" /></button>
                                     </div>
                                  )}
                                  
@@ -1296,6 +1297,7 @@ export default function App() {
                                         t={t}
                                         gridLayout={data.settings?.gridLayout}
                                         weatherPack={weatherPack} // Pass Pack
+                                        emojiStyle={emojiStyle}
                                     />
                                     {/* Sentinel for Infinite Scroll */}
                                     {visibleCount < filteredEntriesAll.length && (
@@ -1307,11 +1309,12 @@ export default function App() {
                             )}
 
                             {viewMode === 'atlas' && (
-                                <AtlasView entries={visibleEntries} activeCategory={activeCategory} onSelectEntry={setSelectedEntry} themeClasses={themeClasses} isAdmin={isAdmin} t={t} />
+                                <AtlasView entries={visibleEntries} activeCategory={activeCategory} onSelectEntry={setSelectedEntry} themeClasses={themeClasses} showAll={true} isAdmin={isAdmin} t={t} emojiStyle={emojiStyle} />
                             )}
                             
                             {viewMode === 'gallery' && (
-                                <>
+                                <div className="space-y-4">
+                                    <h2 className="text-xl font-bold flex items-center gap-2"><Images className="w-5 h-5" /> {t('app.photo_gallery')}</h2>
                                     <GalleryView entries={visibleEntries} onSelectEntry={setSelectedEntry} themeClasses={themeClasses} renderActionButtons={renderActionButtons} t={t} />
                                     {/* Sentinel for Infinite Scroll */}
                                     {visibleCount < filteredEntriesAll.length && (
@@ -1319,7 +1322,7 @@ export default function App() {
                                             <RefreshCw className="w-6 h-6 animate-spin" />
                                         </div>
                                     )}
-                                </>
+                                </div>
                             )}
                             
                             {viewMode === 'calendar' && (

@@ -8,6 +8,7 @@ const path = require('path');
 const POSTS_DIR = path.join(__dirname, 'posts');
 const BACKUPS_DIR = path.join(__dirname, 'backups');
 const IMG_DIR = path.join(__dirname, 'img');
+const FONTS_DIR = path.join(__dirname, 'fonts');
 
 // Data Files
 const SETTINGS_FILE = path.join(__dirname, 'settings.json');
@@ -19,6 +20,7 @@ const CUSTOM_QUESTIONS_FILE = path.join(POSTS_DIR, 'questions.json');
 
 // Ensure directories exist
 if (!fs.existsSync(IMG_DIR)) fs.mkdirSync(IMG_DIR);
+if (!fs.existsSync(FONTS_DIR)) fs.mkdirSync(FONTS_DIR);
 if (!fs.existsSync(POSTS_DIR)) fs.mkdirSync(POSTS_DIR);
 if (!fs.existsSync(BACKUPS_DIR)) fs.mkdirSync(BACKUPS_DIR);
 
@@ -220,28 +222,26 @@ try {
                     }
                 }
                 else if (action === 'reset') {
-                    // Clear posts but keep settings and custom questions
                     deleteFolderRecursive(POSTS_DIR);
                     if (!fs.existsSync(POSTS_DIR)) fs.mkdirSync(POSTS_DIR);
-                    
-                    // Re-save custom questions if they exist in memory or just keep them?
-                    // "Reset Diary" usually implies clearing entries.
-                    // If we delete folder, we lose custom questions.
-                    // The prompt says "törölné, minden bejegyzést" (delete all entries).
-                    
-                    // We should PRESERVE custom questions if possible, or just delete entries.
-                    // Ideally read questions first, delete dir, restore questions.
-                    
                     let questions = null;
                     if (fs.existsSync(CUSTOM_QUESTIONS_FILE)) questions = fs.readFileSync(CUSTOM_QUESTIONS_FILE);
                     
-                    deleteFolderRecursive(POSTS_DIR); // This is aggressive, removes folders
-                    // Recreate structure
+                    deleteFolderRecursive(POSTS_DIR);
                     if (!fs.existsSync(POSTS_DIR)) fs.mkdirSync(POSTS_DIR);
-                    
                     if (questions) fs.writeFileSync(CUSTOM_QUESTIONS_FILE, questions);
                     
                     send({ success: true });
+                }
+                else if (action === 'save_font') {
+                    if (!input.name || !input.data) {
+                        send({ error: "Missing name or data" }, 400);
+                        return;
+                    }
+                    const fontPath = path.join(FONTS_DIR, input.name);
+                    const base64Data = input.data.replace(/^data:.*?;base64,/, "");
+                    fs.writeFileSync(fontPath, Buffer.from(base64Data, 'base64'));
+                    send({ success: true, path: 'fonts/' + input.name });
                 }
                 else {
                     // Standard Save
@@ -320,9 +320,15 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
+// Increase limit for font uploads
+ini_set('memory_limit', '256M');
+ini_set('post_max_size', '20M');
+ini_set('upload_max_filesize', '20M');
+
 $postsDir = __DIR__ . '/posts';
 $backupsDir = __DIR__ . '/backups';
 $imgDir = __DIR__ . '/img';
+$fontsDir = __DIR__ . '/fonts';
 
 $settingsFile = __DIR__ . '/settings.json';
 $tagsFile = $postsDir . '/tags.json';
@@ -332,6 +338,7 @@ $defaultQuestionsFile = __DIR__ . '/questions.json';
 $customQuestionsFile = $postsDir . '/questions.json';
 
 if (!file_exists($imgDir)) mkdir($imgDir, 0755, true);
+if (!file_exists($fontsDir)) mkdir($fontsDir, 0755, true);
 if (!file_exists($postsDir)) mkdir($postsDir, 0755, true);
 if (!file_exists($backupsDir)) mkdir($backupsDir, 0755, true);
 
@@ -346,12 +353,9 @@ function rmdir_recursive($dir) {
         if ('.' === $file || '..' === $file) continue;
         if (is_dir("$dir/$file")) rmdir_recursive("$dir/$file");
         else {
-            // Don't delete questions and tags if specific logic requires, but for RESET we clear posts
-            // But we want to preserve questions.json if it exists in posts/
             if ($file !== 'questions.json' && $file !== 'tags.json') unlink("$dir/$file");
         }
     }
-    // rmdir($dir); // Keep the main directory
 }
 
 // Status check
@@ -502,15 +506,9 @@ if ($method === 'GET') {
                 echo json_encode(['error' => 'Backup not found']);
             } else {
                 $data = json_decode(file_get_contents($backupPath), true);
-                
-                // Clear posts
                 rmdir_recursive($postsDir);
-                
-                // Restore settings/questions
                 if (isset($data['settings'])) file_put_contents($settingsFile, json_encode($data['settings']));
                 if (isset($data['questions'])) file_put_contents($customQuestionsFile, json_encode($data['questions']));
-                
-                // Restore entries
                 if (isset($data['entries'])) {
                     $grouped = [];
                     $allTags = [];
@@ -521,7 +519,6 @@ if ($method === 'GET') {
                         $key = "$year/$week";
                         if (!isset($grouped[$key])) $grouped[$key] = [];
                         $grouped[$key][] = $entry;
-                        
                         if (isset($entry['tags']) && is_array($entry['tags'])) {
                             foreach ($entry['tags'] as $tag) {
                                 if (!isset($allTags[$tag])) $allTags[$tag] = [];
@@ -541,9 +538,19 @@ if ($method === 'GET') {
             }
         }
         elseif ($action === 'reset') {
-            // Delete all JSONs in posts subfolders, preserve questions.json if needed
             rmdir_recursive($postsDir);
             echo json_encode(['success' => true]);
+        }
+        elseif ($action === 'save_font') {
+            if (!isset($json['name']) || !isset($json['data'])) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Missing name or data']);
+                exit;
+            }
+            $fontPath = $fontsDir . '/' . basename($json['name']);
+            $base64Data = preg_replace('#^data:.*?;base64,#', '', $json['data']);
+            file_put_contents($fontPath, base64_decode($base64Data));
+            echo json_encode(['success' => true, 'path' => 'fonts/' . basename($json['name'])]);
         }
         else {
             // Standard Save

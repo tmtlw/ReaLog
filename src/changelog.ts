@@ -5,9 +5,91 @@ export interface ChangeLogItem {
     changes: string[];
 }
 
-export const APP_VERSION = "4.4.1";
+export const APP_VERSION = "4.7.0";
 
 export const CHANGELOG: ChangeLogItem[] = [
+    {
+        version: "4.7.0",
+        date: "2024-12-10",
+        changes: [
+            "Új funkció: Frissítések ellenőrzése GitHub-ról a 'Rólam' menüpontban.",
+            "UI fejlesztés: Frissítés gomb és újdonságok megjelenítése a verziószám mellett.",
+            "Konfiguráció: GITHUB_CONFIG hozzáadása a constants.ts fájlhoz."
+        ]
+    },
+    {
+        version: "4.6.0",
+        date: "2024-12-09",
+        changes: [
+            "Új funkció: Interaktív helyszínválasztó térkép a bejegyzések szerkesztésekor.",
+            "Új funkció: Helyek mentése (pl. Otthon, Munkahely) a gyorsabb kiválasztáshoz.",
+            "Javítás: Az időjárás lekérése mostantól a választott helyszín alapján történik, nem csak az aktuális GPS pozícióból.",
+            "UI frissítés: Modern helyszínválasztó modal."
+        ]
+    },
+    {
+        version: "4.5.6",
+        date: "2024-12-08",
+        changes: [
+            "Javítás: Service Worker 'chrome-extension' hiba javítása, csak valid http kérések gyorsítótárazása.",
+            "Új funkció: Egyéni betűtípusok és Emoji fontok (OpenMoji, Emojidex) szerverre mentése (fonts mappa).",
+            "UI javítás: Lobster betűtípus helyes alkalmazása a Rólam oldalon.",
+            "Optimalizáció: Offline font támogatás integrálása."
+        ]
+    },
+    {
+        version: "4.5.5",
+        date: "2024-12-08",
+        changes: [
+            "Javítás: Rólam menüpont 'ReaLog' felirat betűtípusa (Lobster) most már helyesen jelenik meg.",
+            "Új funkció: Emoji betűtípusok (OpenMoji, Emojidex) mentése szerverre első kiválasztáskor (offlineFonts támogatás).",
+            "Optimalizáció: Globális stílusok finomhangolása az öröklődés javítására."
+        ]
+    },
+    {
+        version: "4.5.4",
+        date: "2024-12-08",
+        changes: [
+            "Javítás: Emoji betűtípusok betöltésének optimalizálása (font ütközések feloldása).",
+            "UI javítás: A Kinézet szerkesztőben a fülek mostantól görgethetők, nem nyomódnak össze.",
+            "Kuka: 'Kuka ürítése' gomb hozzáadása a végleges törléshez.",
+            "Vázlat kezelés: Új bejegyzés létrehozásakor a 'Mégse' gomb törli a vázlatot."
+        ]
+    },
+    {
+        version: "4.5.3",
+        date: "2024-12-08",
+        changes: [
+            "Javítás: Service Worker telepítési hiba javítása (CORS kezelés a külső CDN forrásoknál).",
+            "Stabilizálás: Offline működés megbízhatóságának növelése."
+        ]
+    },
+    {
+        version: "4.5.2",
+        date: "2024-12-08",
+        changes: [
+            "Javítás: Service Worker (sw.js) hozzáadása a telepítő csomaghoz, így a szerver helyesen szolgálja ki a fájlt.",
+            "Gyorsítótárazás: Emoji betűtípusok offline elérése (OpenMoji, Emojidex) a helyi tárból."
+        ]
+    },
+    {
+        version: "4.5.1",
+        date: "2024-12-08",
+        changes: [
+            "Teljesítmény: Az Emoji betűtípusok (OpenMoji, Emojidex) mostantól a helyi gyorsítótárból (Cache) töltődnek be az első indítás után, így gyorsabb a megjelenés és működnek offline módban is.",
+            "Javítás: Stabilitási javítások a Kinézet szerkesztőben."
+        ]
+    },
+    {
+        version: "4.5.0",
+        date: "2024-12-08",
+        changes: [
+            "AI Funkciók kivezetése: A rendszer mostantól teljesen offline/szerver alapú.",
+            "Emoji Stílusok kiterjesztése: A választott stílus mostantól a Statisztikákban és minden egyéb felületen is egységesen megjelenik.",
+            "Biztonsági Mentés: Közvetlen elérés a menüből az adatbiztonság növelése érdekében.",
+            "Új Emoji készletek: Google Noto, OpenMoji, Emojidex integráció."
+        ]
+    },
     {
         version: "4.4.1",
         date: "2024-12-07",
@@ -22,8 +104,7 @@ export const CHANGELOG: ChangeLogItem[] = [
         date: "2024-12-05",
         changes: [
             "PWA Támogatás: Teljes offline működés és alkalmazásként való telepíthetőség mobilra.",
-            "Új funkció: Napi Inspiráló Idézet a főoldalon (angol API-ból, Gemini AI fordítással).",
-            "Beállítások: Saját Gemini API Kulcs megadása a Fiók fülön az AI funkciókhoz.",
+            "Új funkció: Napi Inspiráló Idézet a főoldalon.",
             "Szinkronizáció: Háttérben futó adatfeltöltés online állapotba kerüléskor."
         ]
     },

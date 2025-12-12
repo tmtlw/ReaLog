@@ -1,11 +1,12 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  Map as MapIcon, Images, Download, Server, Settings, LogOut, Lock, Menu, Hash, CalendarClock, BookOpen, Palette, ChevronDown, Monitor, MoreVertical, Trash2, PieChart, Trophy
+  Map as MapIcon, Images, Download, Server, Settings, LogOut, Lock, Menu, Hash, CalendarClock, BookOpen, Palette, ChevronDown, Monitor, MoreVertical, Trash2, PieChart, Trophy, Upload
 } from 'lucide-react';
 import { Category } from '../../types';
 import { CATEGORY_LABELS, CATEGORY_COLORS } from '../../constants';
 import { Button } from '../ui';
+import EmojiRenderer from '../ui/EmojiRenderer';
 
 interface NavbarProps {
     appName: string;
@@ -17,7 +18,7 @@ interface NavbarProps {
     isAdmin: boolean;
     onOpenExport: () => void;
     onOpenDeploy: () => void;
-    onOpenSettings: () => void;
+    onOpenSettings: (tab?: 'views' | 'public' | 'account' | 'about' | 'data') => void;
     onOpenThemeEditor: () => void;
     onLogout: () => void;
     onOpenAuth: () => void;
@@ -28,12 +29,14 @@ interface NavbarProps {
     showStats: boolean;
     showGamification: boolean;
     currentStreak: number;
+    logoEmoji?: string | null;
 }
 
 const Navbar: React.FC<NavbarProps> = ({
     appName, activeCategory, setActiveCategory, globalView, setGlobalView, setActiveTab,
     isAdmin, onOpenExport, onOpenDeploy, onOpenSettings, onOpenThemeEditor, onLogout, onOpenAuth,
-    themeClasses, showMobileMenu, setShowMobileMenu, t, showStats, showGamification, currentStreak
+    themeClasses, showMobileMenu, setShowMobileMenu, t, showStats, showGamification, currentStreak,
+    logoEmoji
 }) => {
     const [showDesktopMenu, setShowDesktopMenu] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
@@ -68,8 +71,12 @@ const Navbar: React.FC<NavbarProps> = ({
                 
                 {/* Left Side: Logo & Desktop Categories */}
                 <div className="flex items-center gap-4 flex-1 md:flex-initial overflow-hidden">
-                     <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex-shrink-0 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                         <BookOpen className="w-5 h-5 text-white" />
+                     <div className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center shadow-lg ${logoEmoji ? 'bg-transparent text-2xl' : 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/20'}`}>
+                         {logoEmoji ? (
+                             <EmojiRenderer emoji={logoEmoji} style="native" />
+                         ) : (
+                             <BookOpen className="w-5 h-5 text-white" />
+                         )}
                      </div>
                      <span className="font-bold text-lg hidden md:block tracking-tight">{appName}</span>
 
@@ -151,6 +158,9 @@ const Navbar: React.FC<NavbarProps> = ({
                                             <button onClick={() => { onOpenExport(); setShowDesktopMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold rounded hover:bg-black/5 flex items-center gap-2">
                                                 <Download className="w-4 h-4" /> {t('nav.export')}
                                             </button>
+                                            <button onClick={() => { onOpenSettings('data'); setShowDesktopMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold rounded hover:bg-black/5 flex items-center gap-2">
+                                                <Upload className="w-4 h-4" /> {t('settings.backup_title')}
+                                            </button>
                                             <button onClick={() => { onOpenDeploy(); setShowDesktopMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold rounded hover:bg-black/5 flex items-center gap-2">
                                                 <Server className="w-4 h-4" /> {t('nav.deploy')}
                                             </button>
@@ -216,6 +226,7 @@ const Navbar: React.FC<NavbarProps> = ({
                             <Button variant="secondary" themeClasses={themeClasses} onClick={() => { setGlobalView('trash'); setShowMobileMenu(false); }} className="w-full justify-start text-red-500"><Trash2 className="w-4 h-4" /> {t('nav.trash')}</Button>
                             <Button variant="secondary" themeClasses={themeClasses} onClick={() => { onOpenThemeEditor(); setShowMobileMenu(false); }} className="w-full justify-start"><Palette className="w-4 h-4" /> {t('nav.appearance')}</Button>
                             <Button variant="secondary" themeClasses={themeClasses} onClick={() => { onOpenExport(); setShowMobileMenu(false); }} className="w-full justify-start"><Download className="w-4 h-4" /> {t('nav.export')}</Button>
+                            <Button variant="secondary" themeClasses={themeClasses} onClick={() => { onOpenSettings('data'); setShowMobileMenu(false); }} className="w-full justify-start"><Upload className="w-4 h-4" /> {t('settings.backup_title')}</Button>
                             <Button variant="secondary" themeClasses={themeClasses} onClick={() => { onOpenDeploy(); setShowMobileMenu(false); }} className="w-full justify-start"><Server className="w-4 h-4" /> {t('nav.deploy')}</Button>
                             <Button variant="secondary" themeClasses={themeClasses} onClick={() => { onOpenSettings(); setShowMobileMenu(false); }} className="w-full justify-start"><Settings className="w-4 h-4" /> {t('nav.settings')}</Button>
                         </div>

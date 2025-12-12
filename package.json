@@ -1,7 +1,7 @@
 
 {
   "name": "grind-naplo",
-  "version": "4.4.1",
+  "version": "4.5.0",
   "description": "Grind Napló (CGI Mode)",
   "scripts": {
     "test": "echo \"Use standard Node CGI execution\""

@@ -52,8 +52,9 @@ export interface Entry {
 }
 
 // Updated ThemeOption to include custom
-export type ThemeOption = 'dark' | 'light' | 'lavender' | 'system' | 'custom';
-export type WeatherIconPack = 'outline' | 'filled' | 'color' | 'emoji' | 'ascii';
+export type ThemeOption = 'dark' | 'light' | 'lavender' | 'system' | 'custom' | 'holiday';
+export type WeatherIconPack = 'outline' | 'filled' | 'color' | 'emoji' | 'ascii' | 'thin' | 'bold' | 'cartoon' | 'mono-duotone' | 'neon';
+export type EmojiStyle = 'noto' | 'noto-mono' | 'openmoji' | 'emojidex' | 'native' | 'grayscale' | 'sepia' | 'neon' | 'pop' | 'soft' | 'retro' | 'glitch';
 
 export interface CategoryConfig {
     viewMode: 'grid' | 'timeline' | 'calendar' | 'atlas' | 'gallery';
@@ -76,7 +77,15 @@ export interface TypographyConfig {
     fontFamily: string; // Google Font name or 'Custom'
     fontSize: number; // Base pixel size (e.g. 14, 16)
     customFontName?: string;
-    customFontData?: string; // Base64
+    customFontData?: string; // Base64 or Path
+}
+
+export interface SavedLocation {
+    id: string;
+    name: string;
+    lat: number;
+    lon: number;
+    timestamp?: number; // New for sorting
 }
 
 export interface AppSettings {
@@ -86,9 +95,13 @@ export interface AppSettings {
   bookCoverImage?: string; // For book export
   openWeatherMapKey?: string;
   theme?: ThemeOption;
+  activeHoliday?: string; // New: ID of the forced holiday theme
   customTheme?: CustomThemeConfig; // Configuration for the 'custom' theme
   typography?: TypographyConfig; // New: Font settings
   weatherIconPack?: WeatherIconPack; // New: Selected weather icon set
+  emojiStyle?: EmojiStyle; // New: Selected emoji rendering style
+  offlineFonts?: boolean; // New: Use local fonts for emojis/system
+  savedLocations?: SavedLocation[]; // New: User saved places
   language?: string; 
   moods?: string[]; // New: Custom emojis
   gridLayout?: 'standard' | 'masonry'; // New: Layout preference for Grid View
@@ -99,6 +112,7 @@ export interface AppSettings {
   enableGamification?: boolean; // Toggle Streak/Gamification features
   minWordCount?: number; // New: Minimum expected word count
   showWordCount?: boolean; // New: Toggle visibility of word count
+  dev?: boolean; // New: Enable Developer/Secret features
 }
 
 export interface AppData {

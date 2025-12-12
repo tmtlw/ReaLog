@@ -40,33 +40,24 @@ const WeatherRenderer: React.FC<WeatherRendererProps> = ({ data, pack = 'outline
     const category = getWeatherCategory(data);
     const isNight = data.icon?.endsWith('n');
 
-    // --- PACKS ---
+    const IconComponent = {
+        'Clear': isNight ? Moon : Sun,
+        'Clouds': Cloud,
+        'Rain': CloudRain,
+        'Snow': Snowflake,
+        'Storm': CloudLightning,
+        'Mist': CloudFog,
+        'Other': CloudSun
+    }[category];
 
     // 1. Outline (Lucide Default)
     if (pack === 'outline') {
-        switch(category) {
-            case 'Clear': return isNight ? <Moon className={className} /> : <Sun className={className} />;
-            case 'Clouds': return <Cloud className={className} />;
-            case 'Rain': return <CloudRain className={className} />;
-            case 'Snow': return <Snowflake className={className} />;
-            case 'Storm': return <CloudLightning className={className} />;
-            case 'Mist': return <CloudFog className={className} />;
-            default: return <CloudSun className={className} />;
-        }
+        return <IconComponent className={className} />;
     }
 
     // 2. Filled (Lucide Filled)
     if (pack === 'filled') {
-        const fillClass = `${className} fill-current`;
-        switch(category) {
-            case 'Clear': return isNight ? <Moon className={fillClass} /> : <Sun className={fillClass} />;
-            case 'Clouds': return <Cloud className={fillClass} />;
-            case 'Rain': return <CloudRain className={fillClass} />;
-            case 'Snow': return <Snowflake className={fillClass} />;
-            case 'Storm': return <CloudLightning className={fillClass} />;
-            case 'Mist': return <CloudFog className={fillClass} />;
-            default: return <CloudSun className={fillClass} />;
-        }
+        return <IconComponent className={`${className} fill-current`} />;
     }
 
     // 3. Color (Lucide Styled)
@@ -107,6 +98,49 @@ const WeatherRenderer: React.FC<WeatherRendererProps> = ({ data, pack = 'outline
             case 'Storm': return <span className={fontClass}>%!</span>;
             case 'Mist': return <span className={fontClass}>~~</span>;
             default: return <span className={fontClass}>-</span>;
+        }
+    }
+
+    // 6. Thin (Stroke 1)
+    if (pack === 'thin') {
+        return <IconComponent className={className} strokeWidth={1} />;
+    }
+
+    // 7. Bold (Stroke 3)
+    if (pack === 'bold') {
+        return <IconComponent className={className} strokeWidth={3} />;
+    }
+
+    // 8. Cartoon (Black stroke, colored fill)
+    if (pack === 'cartoon') {
+        const base = `${className} stroke-black stroke-2`;
+        switch(category) {
+            case 'Clear': return isNight ? <Moon className={`${base} fill-yellow-100`} /> : <Sun className={`${base} fill-yellow-400`} />;
+            case 'Clouds': return <Cloud className={`${base} fill-gray-100`} />;
+            case 'Rain': return <CloudRain className={`${base} fill-blue-300`} />;
+            case 'Snow': return <Snowflake className={`${base} fill-white`} />;
+            case 'Storm': return <CloudLightning className={`${base} fill-purple-300`} />;
+            case 'Mist': return <CloudFog className={`${base} fill-gray-200`} />;
+            default: return <CloudSun className={`${base} fill-orange-200`} />;
+        }
+    }
+
+    // 9. Mono Duotone (Current color stroke, faint fill)
+    if (pack === 'mono-duotone') {
+        return <IconComponent className={className} fill="currentColor" fillOpacity={0.2} />;
+    }
+
+    // 10. Neon (Glow effect)
+    if (pack === 'neon') {
+        const glow = (col: string) => `${className} ${col} drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]`;
+        switch(category) {
+            case 'Clear': return <IconComponent className={glow(isNight ? 'text-indigo-300' : 'text-yellow-400')} />;
+            case 'Clouds': return <IconComponent className={glow('text-cyan-200')} />;
+            case 'Rain': return <IconComponent className={glow('text-blue-400')} />;
+            case 'Snow': return <IconComponent className={glow('text-white')} />;
+            case 'Storm': return <IconComponent className={glow('text-purple-400')} />;
+            case 'Mist': return <IconComponent className={glow('text-teal-300')} />;
+            default: return <IconComponent className={glow('text-orange-300')} />;
         }
     }
 

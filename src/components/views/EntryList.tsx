@@ -1,10 +1,11 @@
 
 import React from 'react';
 import { Book, Layout, List, Calendar, Map as MapIcon, Images, FileText, ThermometerSun, MapPin, Clock } from 'lucide-react';
-import { Entry, Category, WeatherIconPack } from '../../types';
+import { Entry, Category, WeatherIconPack, EmojiStyle } from '../../types';
 import { CATEGORY_COLORS, CATEGORY_HOVER_BORDERS, CATEGORY_TEXT_COLORS } from '../../constants';
 import { Card } from '../ui';
 import WeatherRenderer from '../ui/WeatherRenderer';
+import EmojiRenderer from '../ui/EmojiRenderer';
 
 interface EntryListProps {
     viewMode: 'grid' | 'timeline' | 'calendar' | 'atlas' | 'gallery';
@@ -15,11 +16,12 @@ interface EntryListProps {
     isAdmin: boolean;
     t: (key: string, params?: any) => string;
     gridLayout?: 'standard' | 'masonry';
-    weatherPack?: WeatherIconPack; // New Prop
+    weatherPack?: WeatherIconPack;
+    emojiStyle?: EmojiStyle;
 }
 
 const EntryList: React.FC<EntryListProps> = ({
-    viewMode, entries, onSelectEntry, renderActionButtons, themeClasses, isAdmin, t, gridLayout = 'standard', weatherPack = 'outline'
+    viewMode, entries, onSelectEntry, renderActionButtons, themeClasses, isAdmin, t, gridLayout = 'standard', weatherPack = 'outline', emojiStyle = 'native'
 }) => {
 
     const getCatLabel = (cat: Category) => t(`category.${cat.toLowerCase()}`);
@@ -90,7 +92,7 @@ const EntryList: React.FC<EntryListProps> = ({
                             <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${CATEGORY_COLORS[e.category]} text-white`}>{getCatLabel(e.category)}</span>
                             {e.isDraft && <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-orange-500 text-white flex items-center gap-1"><FileText className="w-3 h-3" /> {t('common.draft')}</span>}
                         </div>
-                        {e.mood && <span className="text-lg">{e.mood}</span>}
+                        {e.mood && <span className="text-lg"><EmojiRenderer emoji={e.mood} style={emojiStyle} /></span>}
                     </div>
                     <h3 className="font-bold text-lg mb-2 leading-tight group-hover:text-emerald-500 transition-colors cursor-pointer">{e.title || e.dateLabel}</h3>
                     
@@ -203,7 +205,7 @@ const EntryList: React.FC<EntryListProps> = ({
                                                     </div>
                                                     <h3 className={`font-bold text-lg transition-colors ${`group-hover:${CATEGORY_TEXT_COLORS[e.category] || 'text-current'}`}`}>{e.title || e.dateLabel}</h3>
                                                 </div>
-                                                {e.mood && <div className="text-2xl">{e.mood}</div>}
+                                                {e.mood && <div className="text-2xl"><EmojiRenderer emoji={e.mood} style={emojiStyle} /></div>}
                                             </div>
                                             
                                             <div className="mt-2 text-sm opacity-80 line-clamp-2">

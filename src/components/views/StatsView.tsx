@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { Entry, WeatherIconPack } from '../../types';
+import { Entry, WeatherIconPack, EmojiStyle } from '../../types';
 import { Card } from '../ui';
 import { BarChart, Activity, PieChart, CalendarDays, MapPin, AlignLeft, CloudSun, Calendar, ArrowUp, ArrowDown, Layout } from 'lucide-react';
 import WeatherRenderer, { getWeatherCategory } from '../ui/WeatherRenderer';
+import EmojiRenderer from '../ui/EmojiRenderer';
 
 interface StatsViewProps {
     entries: Entry[];
@@ -11,10 +12,11 @@ interface StatsViewProps {
     t: (key: string, params?: any) => string;
     savedLayout?: string[];
     onSaveLayout?: (order: string[]) => void;
-    weatherPack?: WeatherIconPack; // New Prop
+    weatherPack?: WeatherIconPack;
+    emojiStyle?: EmojiStyle; // Added emojiStyle prop
 }
 
-const StatsView: React.FC<StatsViewProps> = ({ entries, themeClasses, t, savedLayout, onSaveLayout, weatherPack = 'outline' }) => {
+const StatsView: React.FC<StatsViewProps> = ({ entries, themeClasses, t, savedLayout, onSaveLayout, weatherPack = 'outline', emojiStyle = 'native' }) => {
     const [isReordering, setIsReordering] = useState(false);
     const [widgetOrder, setWidgetOrder] = useState<string[]>(
         savedLayout && savedLayout.length > 0 
@@ -184,7 +186,7 @@ const StatsView: React.FC<StatsViewProps> = ({ entries, themeClasses, t, savedLa
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs opacity-60 hidden sm:inline">Domináns:</span>
-                                        <span className="text-xl">{mood}</span>
+                                        <EmojiRenderer emoji={mood} style={emojiStyle} className="text-xl" />
                                         <span className="text-xs font-bold bg-white/10 px-1.5 py-0.5 rounded">{percent}%</span>
                                     </div>
                                 </div>
@@ -208,7 +210,7 @@ const StatsView: React.FC<StatsViewProps> = ({ entries, themeClasses, t, savedLa
                                         <span className="text-sm font-bold w-20">{days[Number(dayIdx)]}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xl">{mood}</span>
+                                        <EmojiRenderer emoji={mood} style={emojiStyle} className="text-xl" />
                                         <span className="text-xs font-bold bg-white/10 px-1.5 py-0.5 rounded">{percent}%</span>
                                     </div>
                                 </div>
@@ -230,7 +232,7 @@ const StatsView: React.FC<StatsViewProps> = ({ entries, themeClasses, t, savedLa
                 <div className="space-y-3">
                     {sortedMoods.map(([mood, count]) => (
                         <div key={mood} className="flex items-center gap-3">
-                            <span className="text-2xl w-8 text-center">{mood}</span>
+                            <div className="w-8 text-center"><EmojiRenderer emoji={mood} style={emojiStyle} className="text-2xl" /></div>
                             <div className="flex-1 h-3 bg-black/10 rounded-full overflow-hidden relative">
                                 <div 
                                     className="h-full bg-emerald-500 rounded-full opacity-80" 

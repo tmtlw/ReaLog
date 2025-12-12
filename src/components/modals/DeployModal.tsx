@@ -5,7 +5,7 @@ import { Button, Card } from '../ui';
 import { SERVER_CODE_JSCRIPT, SERVER_CODE_PHP, SERVER_CODE_HTACCESS_PHP, SERVER_CODE_HTACCESS_NODE } from '../../constants/serverTemplates';
 import { DEFAULT_QUESTIONS } from '../../constants';
 
-const APP_VERSION = "4.4.1";
+const APP_VERSION = "4.5.3";
 
 const DeployModal: React.FC<{ onClose: () => void, themeClasses: any, t: (key: string) => string }> = ({ onClose, themeClasses, t }) => {
     const [isZipping, setIsZipping] = useState(false);
@@ -33,7 +33,7 @@ const DeployModal: React.FC<{ onClose: () => void, themeClasses: any, t: (key: s
             // Get all files loaded by the system + index.html
             // This ensures new files added to index.html are automatically included
             const allLoadedFiles = Object.keys(sourceCache);
-            const filesToZip = Array.from(new Set(['index.html', ...allLoadedFiles]));
+            const filesToZip = Array.from(new Set(['index.html', 'sw.js', ...allLoadedFiles]));
             
             const failedFiles: string[] = [];
 

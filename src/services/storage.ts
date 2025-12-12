@@ -1,6 +1,6 @@
 
 import { AppData, Entry, Category } from '../types';
-import { INITIAL_DATA, CATEGORY_LABELS } from '../constants';
+import { INITIAL_DATA, CATEGORY_LABELS, GITHUB_CONFIG } from '../constants';
 import { getTranslation } from './i18n';
 
 // Old key for migration
@@ -329,6 +329,54 @@ export const uploadImage = async (file: File): Promise<string> => {
     return json.url;
 };
 
+// --- New Feature: Download Font URL and Save to Server ---
+export const saveFont = async (urlOrBase64: string, filename: string): Promise<string> => {
+    let base64data = "";
+
+    // 1. Check if input is URL or Base64
+    if (urlOrBase64.startsWith('data:') || urlOrBase64.startsWith('base64,')) {
+        base64data = urlOrBase64;
+    } else {
+        // Download blob from external URL using CORS
+        try {
+            const response = await fetch(urlOrBase64, { mode: 'cors' });
+            if (!response.ok) throw new Error(`Failed to download font: ${response.statusText}`);
+            const blob = await response.blob();
+            
+            // Convert to Base64
+            base64data = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        } catch(e) {
+            console.error("Font fetch failed:", e);
+            throw e;
+        }
+    }
+
+    // 2. Send to Server API
+    const serverUrl = getApiUrl('data');
+    const res = await fetch(serverUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            action: 'save_font',
+            name: filename,
+            data: base64data
+        })
+    });
+
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Server failed to save font: ${text}`);
+    }
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    return json.path; // returns relative path e.g. "fonts/openmoji.woff2"
+};
+
 // --- Cloud Storage (REST API - External) ---
 
 export const cloudLoad = async (config: any): Promise<AppData | null> => {
@@ -550,4 +598,56 @@ export const exportData = async (
     downloadFile(JSON.stringify(exportObj, null, 2), `grind-diary-${filenameDate}.json`, 'application/json');
     return;
   }
+};
+
+// --- Github Update Check ---
+export const checkGithubVersion = async (currentVersion: string) => {
+    if (!GITHUB_CONFIG.ENABLED || !GITHUB_CONFIG.OWNER || !GITHUB_CONFIG.REPO) {
+        return null;
+    }
+
+    try {
+        // Fetch package.json from raw
+        const packageUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.OWNER}/${GITHUB_CONFIG.REPO}/${GITHUB_CONFIG.BRANCH}/package.json`;
+        const res = await fetch(packageUrl);
+        if (!res.ok) throw new Error("Failed to fetch version");
+        
+        const pkg = await res.json();
+        const remoteVersion = pkg.version;
+
+        if (remoteVersion !== currentVersion) {
+            // Fetch changelog to show what changed
+            const changelogUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.OWNER}/${GITHUB_CONFIG.REPO}/${GITHUB_CONFIG.BRANCH}/src/changelog.ts`;
+            const clRes = await fetch(changelogUrl);
+            let changes: string[] = [];
+            
+            if (clRes.ok) {
+                const clText = await clRes.text();
+                // Simple regex to extract changes array for the specific version
+                // Looking for { version: "REMOTE_VERSION", ... changes: [ ... ] }
+                // This is a rough parser for TS file content
+                const versionBlock = clText.split(`version: "${remoteVersion}"`)[1];
+                if (versionBlock) {
+                    const changesBlock = versionBlock.split('changes: [')[1];
+                    if (changesBlock) {
+                        const rawChanges = changesBlock.split(']')[0];
+                        // Extract strings
+                        const matches = rawChanges.match(/"(.*?)"/g);
+                        if (matches) {
+                            changes = matches.map(s => s.replace(/"/g, ''));
+                        }
+                    }
+                }
+            }
+
+            return {
+                version: remoteVersion,
+                changes: changes,
+                url: `https://github.com/${GITHUB_CONFIG.OWNER}/${GITHUB_CONFIG.REPO}`
+            };
+        }
+    } catch(e) {
+        console.warn("Update check failed", e);
+    }
+    return null;
 };

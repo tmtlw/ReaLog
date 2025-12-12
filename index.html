@@ -28,6 +28,22 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&family=Lobster&display=swap" rel="stylesheet">
+    
+    <!-- Emoji Fonts -->
+    <!-- Google Noto Color Emoji needs crossorigin to avoid CORS issues in some contexts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&family=Noto+Emoji:wght@300..700&display=swap" rel="stylesheet" crossorigin="anonymous">
+    <style>
+      @font-face {
+        font-family: 'OpenMoji';
+        src: url('https://cdn.jsdelivr.net/npm/@openmoji/openmoji-font@latest/fonts/OpenMoji-Color.woff2') format('woff2');
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Emojidex';
+        src: url('https://cdn.jsdelivr.net/gh/emojidex/emojidex-web@latest/src/fonts/emojidex-monospaced.woff2') format('woff2');
+        font-display: swap;
+      }
+    </style>
 
 <script type="importmap">
 {
@@ -36,7 +52,8 @@
     "react": "https://aistudiocdn.com/react@^19.2.1",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
     "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
-    "@google/genai": "https://esm.sh/@google/genai@^1.33.0"
+    "@google/genai": "https://esm.sh/@google/genai@^1.33.0",
+    "react-dom": "https://esm.sh/react-dom@^19.2.3"
   }
 }
 </script>
@@ -114,6 +131,7 @@
         './src/components/ui/index.tsx',
         './src/components/ui/RichTextEditor.tsx',
         './src/components/ui/WeatherRenderer.tsx',
+        './src/components/ui/EmojiRenderer.tsx',
         
         // Layout
         './src/components/layout/StatusBar.tsx',
@@ -138,7 +156,11 @@
         './src/components/modals/DeployModal.tsx',
         './src/components/modals/ThemeEditorModal.tsx',
         './src/components/modals/StorageDebugMenu.tsx',
-        './src/components/modals/TemplateModal.tsx'
+        './src/components/modals/TemplateModal.tsx',
+        './src/components/modals/LocationPickerModal.tsx',
+
+        // Settings Tabs (New)
+        './src/components/settings/SettingsViewsTab.tsx'
       ];
 
       function updateStatus(msg, detail = "") {
@@ -206,6 +228,7 @@
         // 1. External Globals
         if (id === 'react') return window.React;
         if (id === 'react-dom/client') return window.ReactDOM;
+        if (id === 'react-dom') return window.ReactDOM; // Added for createPortal support
         if (id === 'lucide-react') return window.lucide;
 
         // 2. Resolve internal path
@@ -259,7 +282,7 @@
                 <div style="max-width: 500px; width: 100%; background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
                     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; color: #ef4444;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                        <h1 style="font-size: 1.5rem; font-weight: bold; margin: 0;">Rendszerhiba</h1>
+                        <h1 style="font-size: 1.5rem; font-weight: bold; margin-0;">Rendszerhiba</h1>
                     </div>
                     
                     <p style="margin-bottom: 16px; line-height: 1.5; color: #a1a1aa;">Az alkalmazás indítása sikertelen. Néhány fájl nem tölthető be.</p>
