@@ -88,6 +88,13 @@ export interface SavedLocation {
     timestamp?: number; // New for sorting
 }
 
+export interface CloudConfig {
+    enabled: boolean;
+    url?: string;
+    apiKey?: string;
+    collectionName?: string;
+}
+
 export interface AppSettings {
   userName?: string; // Custom display name
   adminPassword?: string; // Custom password
@@ -104,6 +111,7 @@ export interface AppSettings {
   savedLocations?: SavedLocation[]; // New: User saved places
   language?: string; 
   moods?: string[]; // New: Custom emojis
+  cloud?: CloudConfig;
   gridLayout?: 'standard' | 'masonry'; // New: Layout preference for Grid View
   statsLayout?: string[]; // New: Order of stats widgets
   categoryConfigs?: Record<Category, CategoryConfig>; // New: View preferences per category

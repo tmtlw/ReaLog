@@ -5,9 +5,18 @@ export interface ChangeLogItem {
     changes: string[];
 }
 
-export const APP_VERSION = "4.7.0";
+export const APP_VERSION = "4.7.1";
 
 export const CHANGELOG: ChangeLogItem[] = [
+    {
+        version: "4.7.1",
+        date: "2024-12-10",
+        changes: [
+            "Refaktorálás: Beállítások modal szétbontása különálló komponensekre a könnyebb karbantarthatóság érdekében.",
+            "Javítás: Hierarchikus nézet beállításai most már teljes körűen (Napi/Heti/Havi/Éves egymásba ágyazhatóság) elérhetők.",
+            "Konfiguráció: GitHub update repository frissítve 'tmtlw/ReaLog'-ra."
+        ]
+    },
     {
         version: "4.7.0",
         date: "2024-12-10",
