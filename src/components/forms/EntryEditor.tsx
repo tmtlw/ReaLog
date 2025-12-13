@@ -3,9 +3,9 @@ import React, { useRef, useState, useEffect } from 'react';
 import { 
   PenTool, X, List, Grid as GridIcon, RefreshCw, MapPin, 
   Image as ImageIcon, ThermometerSun, Lock, Unlock, Save, Eye, EyeOff, Trash2, CalendarClock,
-  FileText, ChevronLeft, ChevronRight, Plus, Search, AlignLeft, User
+  FileText, ChevronLeft, ChevronRight, Plus, Search, AlignLeft, User, CheckCircle2, Hash, Minus, Activity
 } from 'lucide-react';
-import { Entry, Category, WeatherData, AppSettings, Question, Template, WeatherIconPack, EmojiStyle, SavedLocation } from '../../types';
+import { Entry, Category, WeatherData, AppSettings, Question, Template, WeatherIconPack, EmojiStyle, SavedLocation, Habit } from '../../types';
 import { Button, Input } from '../ui';
 import * as StorageService from '../../services/storage';
 import TemplateModal from '../modals/TemplateModal';
@@ -32,6 +32,7 @@ interface EntryEditorProps {
     onDelete?: () => void;
     activeCategory: Category;
     questions: Question[];
+    habits?: Habit[]; // New
     settings: AppSettings | undefined;
     templates?: Template[];
     onSaveTemplate?: (name: string, questions: string[], isDefault: boolean) => void;
@@ -48,7 +49,7 @@ interface EntryEditorProps {
 }
 
 const EntryEditor: React.FC<EntryEditorProps> = ({
-    entry: currentEntry, onChange, onSave, onCancel, onDelete, activeCategory, questions, settings, 
+    entry: currentEntry, onChange, onSave, onCancel, onDelete, activeCategory, questions, habits = [], settings, 
     templates, onSaveTemplate, onDeleteTemplate, onUpdateSettings, themeClasses, currentTheme,
     serverMode, t, currentLang = 'hu', locationParts, setLocationParts, entries
 }) => {
@@ -58,12 +59,11 @@ const EntryEditor: React.FC<EntryEditorProps> = ({
     const [showLocationPicker, setShowLocationPicker] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-    const [emojiSearch, setEmojiSearch] = useState("");
-    const emojiContainerRef = useRef<HTMLDivElement>(null);
     const [customEmojiSlot, setCustomEmojiSlot] = useState<string | null>(null);
     
     const fileInputRef = useRef<HTMLInputElement>(null);
     const datePickerRef = useRef<HTMLInputElement>(null);
+    const emojiContainerRef = useRef<HTMLDivElement>(null);
 
     const weatherPack: WeatherIconPack = settings?.weatherIconPack || 'outline';
     const emojiStyle: EmojiStyle = settings?.emojiStyle || 'native';
@@ -112,7 +112,6 @@ const EntryEditor: React.FC<EntryEditorProps> = ({
             }
         } else if (currentEntry.location && locationParts.length === 0) {
              if (isEditing()) {
-                 // Clear both location string and GPS if parts are removed
                  onChange({ ...currentEntry, location: undefined, gps: undefined });
              }
         }
@@ -124,6 +123,7 @@ const EntryEditor: React.FC<EntryEditorProps> = ({
 
     const entryQuestionIds = Object.keys(currentEntry.responses || {});
     const availableQuestions = questions.filter(q => q.category === activeCategory && !entryQuestionIds.includes(q.id));
+    const activeHabits = habits.filter(h => h.category === activeCategory && h.isActive);
     
     const moodCounts = entries.reduce((acc, e) => {
         if(e.mood) acc[e.mood] = (acc[e.mood] || 0) + 1;
@@ -142,6 +142,25 @@ const EntryEditor: React.FC<EntryEditorProps> = ({
         }
     }, [currentEntry.mood]);
 
+    // Habit Logic
+    const toggleHabit = (habitId: string) => {
+        const currentVals = currentEntry.habitValues || {};
+        const newVal = !currentVals[habitId];
+        onChange({ ...currentEntry, habitValues: { ...currentVals, [habitId]: newVal } });
+    };
+
+    const updateHabitValue = (habitId: string, delta: number) => {
+        const currentVals = currentEntry.habitValues || {};
+        const currentVal = (currentVals[habitId] as number) || 0;
+        const newVal = Math.max(0, currentVal + delta);
+        onChange({ ...currentEntry, habitValues: { ...currentVals, [habitId]: newVal } });
+    };
+
+    const setHabitValue = (habitId: string, value: number) => {
+        const currentVals = currentEntry.habitValues || {};
+        onChange({ ...currentEntry, habitValues: { ...currentVals, [habitId]: Math.max(0, value) } });
+    };
+
     const addQuestionToEntry = (questionId: string) => {
         if (!questionId) return;
         onChange({ ...currentEntry, responses: { ...currentEntry.responses, [questionId]: "" } });
@@ -159,8 +178,6 @@ const EntryEditor: React.FC<EntryEditorProps> = ({
             const existingQ = questions.find(q => q.text === qText && q.category === activeCategory);
             if (existingQ) {
                 newResponses[existingQ.id] = "";
-            } else {
-                console.warn(`Question "${qText}" not found in global list for this category.`);
             }
         });
         onChange({ ...currentEntry, responses: newResponses });
@@ -348,6 +365,7 @@ const EntryEditor: React.FC<EntryEditorProps> = ({
 
     return (
         <div className="space-y-6 animate-fade-in pb-24">
+        {/* Header */}
         <div className={`flex items-center justify-between mb-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'} pb-4`}>
             <div className={`flex items-center gap-2 ${themeClasses.accent}`}>
                 <PenTool className="w-5 h-5 flex-shrink-0" />
@@ -529,6 +547,62 @@ const EntryEditor: React.FC<EntryEditorProps> = ({
             </div>
         )}
 
+        {/* --- HABIT TRACKER SECTION --- */}
+        {settings?.enableHabits && activeHabits.length > 0 && (
+            <div className={`p-4 rounded-lg border mb-4 ${themeClasses.card}`}>
+                <h4 className={`text-xs font-bold uppercase mb-3 flex items-center gap-2 ${themeClasses.accent}`}>
+                    <Activity className="w-3 h-3" /> {t('editor.habits_title')}
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {activeHabits.map(habit => {
+                        const val = currentEntry.habitValues?.[habit.id];
+                        
+                        if (habit.type === 'boolean') {
+                            const isDone = !!val;
+                            return (
+                                <button 
+                                    key={habit.id}
+                                    onClick={() => toggleHabit(habit.id)}
+                                    className={`p-3 rounded-lg border text-sm font-medium flex items-center justify-between gap-2 transition-all ${isDone ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-black/5 border-current hover:bg-black/10'}`}
+                                >
+                                    <span className="truncate">{habit.title}</span>
+                                    {isDone && <CheckCircle2 className="w-4 h-4" />}
+                                </button>
+                            );
+                        } else {
+                            // Value type
+                            const count = (val as number) || 0;
+                            const progress = habit.target ? Math.min(100, (count / habit.target) * 100) : 0;
+                            return (
+                                <div key={habit.id} className={`p-2 rounded-lg border flex flex-col gap-2 ${count > 0 ? 'bg-blue-500/10 border-blue-500/50' : 'bg-black/5 border-current'}`}>
+                                    <div className="flex justify-between items-center text-xs font-bold">
+                                        <span className="truncate">{habit.title}</span>
+                                        <span className="opacity-70">{habit.unit || ''}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <button onClick={() => updateHabitValue(habit.id, -1)} className="p-1 rounded bg-black/10 hover:bg-black/20"><Minus className="w-3 h-3" /></button>
+                                        <input 
+                                            type="number" 
+                                            value={count || ''} 
+                                            onChange={(e) => setHabitValue(habit.id, parseFloat(e.target.value))}
+                                            placeholder="0"
+                                            className="flex-1 text-center font-mono font-bold text-lg bg-transparent focus:outline-none w-full"
+                                        />
+                                        <button onClick={() => updateHabitValue(habit.id, 1)} className="p-1 rounded bg-black/10 hover:bg-black/20"><Plus className="w-3 h-3" /></button>
+                                    </div>
+                                    {habit.target && (
+                                        <div className="h-1 bg-black/10 rounded-full overflow-hidden">
+                                            <div className="h-full bg-blue-500 transition-all" style={{ width: `${progress}%` }}></div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        }
+                    })}
+                </div>
+            </div>
+        )}
+
         <div className="space-y-4">
              {currentEntry.entryMode === 'free' ? (
                  <RichTextEditor value={currentEntry.freeTextContent || ''} onChange={(val) => onChange({ ...currentEntry, freeTextContent: val })} themeClasses={themeClasses} placeholder={t('editor.free_text_placeholder')} minHeight="300px" />
@@ -552,7 +626,7 @@ const EntryEditor: React.FC<EntryEditorProps> = ({
                             return (
                                 <div key={qId} className={`space-y-2 p-3 rounded-lg border bg-black/5 ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>
                                     <div className="flex justify-between items-start gap-2">
-                                        <label className={`block text-sm font-medium leading-snug ${themeClasses.accent}`}>{!q.id.startsWith('q_') && <User className="w-3 h-3 inline mr-1 opacity-70" />}{q.text}</label>
+                                        <label className={`block text-sm font-medium leading-snug ${themeClasses.accent}`}>{q.text}</label>
                                         <button type="button" onClick={() => removeQuestionFromEntry(qId)} className="opacity-50 hover:opacity-100"><X className="w-4 h-4" /></button>
                                     </div>
                                     <RichTextEditor value={currentEntry.responses?.[qId] || ''} onChange={(val) => onChange({ ...currentEntry, responses: { ...currentEntry.responses, [qId]: val } })} themeClasses={themeClasses} placeholder={t('editor.response_placeholder')} minHeight="80px" />
@@ -589,7 +663,7 @@ const EntryEditor: React.FC<EntryEditorProps> = ({
                                     </div>
                                 )}
                             </div>
-                            <span className="text-[10px] uppercase opacity-60">{t('editor.words') || 'szó'}</span>
+                            <span className="text-xs opacity-60 uppercase">{t('editor.words') || 'szó'}</span>
                       </div>
                   )}
                   {onDelete ? (

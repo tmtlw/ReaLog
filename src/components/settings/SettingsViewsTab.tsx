@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Layers, LayoutGrid, FileText } from 'lucide-react';
+import { Layers, LayoutGrid, FileText, Activity } from 'lucide-react';
 import { Category, AppSettings } from '../../types';
 
 interface SettingsViewsTabProps {
@@ -58,6 +58,25 @@ const SettingsViewsTab: React.FC<SettingsViewsTabProps> = ({ localSettings, setL
                 </div>
             </div>
 
+            {/* Features Toggle Section */}
+            <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/20 text-sm">
+                <h4 className="font-bold flex items-center gap-2 mb-3 text-orange-500">
+                    <Activity className="w-4 h-4" /> {t('settings.features')}
+                </h4>
+                <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                        <input 
+                            type="checkbox" 
+                            id="enable_habits" 
+                            className="w-4 h-4 accent-orange-500" 
+                            checked={localSettings.enableHabits ?? true} 
+                            onChange={(e) => setLocalSettings(prev => ({ ...prev, enableHabits: e.target.checked }))} 
+                        />
+                        <label htmlFor="enable_habits" className="text-sm font-medium">{t('settings.enable_habits')}</label>
+                    </div>
+                </div>
+            </div>
+
             {/* Writing Goals Section */}
             <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm">
                 <h4 className="font-bold flex items-center gap-2 mb-3 text-blue-500">
@@ -85,7 +104,7 @@ const SettingsViewsTab: React.FC<SettingsViewsTabProps> = ({ localSettings, setL
                 </div>
             </div>
 
-            {/* Hierarchical View Section - FULLY IMPLEMENTED */}
+            {/* Hierarchical View Section */}
             <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-sm space-y-4">
                 <div>
                     <h4 className="font-bold flex items-center gap-2 mb-2 text-emerald-500">

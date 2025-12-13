@@ -10,8 +10,8 @@ import {
   Globe, Layers, Shield, ShieldAlert, Clock, Bold, Italic, Underline, Link as LinkIcon, AlignLeft,
   Recycle, Hash, PieChart, CalendarClock, Filter, Edit2, BookOpen, Images
 } from 'lucide-react';
-import { AppData, Category, Entry, WeatherData, ThemeOption, CategoryConfig, PublicConfig, Template, WeatherIconPack, EmojiStyle, AppSettings } from './types';
-import { CATEGORY_LABELS, DEMO_PASSWORD, INITIAL_DATA, DEFAULT_QUESTIONS, CATEGORY_COLORS, CATEGORY_BORDER_COLORS } from './constants';
+import { AppData, Category, Entry, WeatherData, ThemeOption, CategoryConfig, PublicConfig, Template, WeatherIconPack, EmojiStyle, AppSettings, Habit } from './types';
+import { CATEGORY_LABELS, DEMO_PASSWORD, INITIAL_DATA, DEFAULT_QUESTIONS, CATEGORY_COLORS, CATEGORY_BORDER_COLORS, DEFAULT_HABITS } from './constants';
 import { THEMES, generateCustomTheme, getHolidayTheme, HOLIDAY_THEMES } from './constants/theme';
 import * as StorageService from './services/storage';
 import { getTranslation, Language } from './services/i18n';
@@ -26,6 +26,7 @@ import AtlasView from './components/views/AtlasView';
 import GalleryView from './components/views/GalleryView';
 import CalendarView from './components/views/CalendarView';
 import QuestionManager from './components/views/QuestionManager';
+import HabitManager from './components/views/HabitManager'; // New
 import StatsView from './components/views/StatsView';
 import TagManager from './components/views/TagManager';
 import StreakView from './components/views/StreakView';
@@ -51,7 +52,7 @@ export default function App() {
   const [themeClasses, setThemeClasses] = useState(THEMES.dark);
   const [viewMode, setViewMode] = useState<'grid' | 'timeline' | 'calendar' | 'atlas' | 'gallery'>('grid');
   const [globalView, setGlobalView] = useState<'none' | 'atlas' | 'gallery' | 'tags' | 'onThisDay' | 'trash' | 'stats' | 'streak'>('none');
-  const [activeTab, setActiveTab] = useState<'entries' | 'questions'>('entries');
+  const [activeTab, setActiveTab] = useState<'entries' | 'questions' | 'habits'>('entries');
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [logoEmoji, setLogoEmoji] = useState<string | null>(null);
@@ -118,6 +119,7 @@ export default function App() {
   // --- DERIVED STATE ---
   const showStats = data.settings?.enableStats !== false; 
   const showGamification = data.settings?.enableGamification !== false; 
+  const showHabits = data.settings?.enableHabits !== false;
   const weatherPack: WeatherIconPack = data.settings?.weatherIconPack || 'outline'; 
   const emojiStyle: EmojiStyle = data.settings?.emojiStyle || 'native'; 
 
@@ -204,7 +206,14 @@ export default function App() {
             setSyncStatus('syncing');
             const serverData = await StorageService.serverLoad();
             if (serverData) {
-                setData({ ...serverData, settings: { ...local.settings, ...serverData.settings } });
+                // Merge data if needed
+                const mergedData = { 
+                    ...serverData, 
+                    settings: { ...local.settings, ...serverData.settings },
+                    // Ensure habits are present even if server data is old/empty
+                    habits: (serverData.habits && serverData.habits.length > 0) ? serverData.habits : (local.habits || DEFAULT_HABITS)
+                };
+                setData(mergedData);
                 setSyncStatus('success');
                 setLastSyncTime(Date.now());
                 setIsAppLoading(false);
@@ -214,6 +223,10 @@ export default function App() {
             }
         }
         
+        // Ensure local data has habits
+        if (!local.habits || local.habits.length === 0) {
+            local.habits = DEFAULT_HABITS;
+        }
         setData(local);
         setIsAppLoading(false);
     }
@@ -278,17 +291,13 @@ export default function App() {
       let css = '';
       if (fontSize) css += `:root { font-size: ${fontSize}px; } `;
       
-      // Inject Local Emoji Font Logic if enabled and using offline fonts
       if (data.settings?.offlineFonts) {
-          // Point to local folder relative to index.html
           css += `@font-face { font-family: 'OpenMoji'; src: url('fonts/OpenMoji-Color.woff2') format('woff2'); } `;
-          css += `@font-face { font-family: 'Emojidex'; src: url('fonts/emojidex-monospaced.woff2') format('woff2'); } `;
       }
 
       if (fontFamily) {
           const finalFamily = (fontFamily === 'Custom' && customFontName) ? customFontName : fontFamily;
           if (fontFamily === 'Custom' && customFontName && customFontData) {
-              // Check if customFontData is a path (starts with fonts/) or base64
               const src = customFontData.startsWith('fonts/') 
                   ? `url('${customFontData}')` 
                   : `url('${customFontData}')`;
@@ -305,19 +314,10 @@ export default function App() {
               }
               link.href = `https://fonts.googleapis.com/css2?family=${fontFamily.replace(/ /g, '+')}:wght@400;700&display=swap`;
           }
-          // Only override specific elements to not break icon fonts or special fonts like Lobster
           css += `body, button, input, textarea, select { font-family: '${finalFamily}', sans-serif !important; } `;
       }
       styleTag.textContent = css;
   }, [data.settings?.typography, data.settings?.emojiStyle, data.settings?.offlineFonts]);
-
-  useEffect(() => {
-      if (activeCategory) {
-          const config = data.settings?.categoryConfigs?.[activeCategory];
-          if (config && config.viewMode) setViewMode(config.viewMode);
-          else setViewMode('grid');
-      }
-  }, [activeCategory, data.settings?.categoryConfigs]);
 
   // --- SAVE & PERSISTENCE ---
   useEffect(() => {
@@ -518,7 +518,6 @@ export default function App() {
     let label = today.toISOString().slice(0, 10);
     
     if (activeCategory === Category.WEEKLY) {
-        // ... (weekly label logic) ...
         const d = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
         const dayNum = d.getUTCDay() || 7;
         d.setUTCDate(d.getUTCDate() + 4 - dayNum);
@@ -554,9 +553,10 @@ export default function App() {
       isPrivate: true, 
       isLocationPrivate: false,
       tags: [],
-      isDraft: true, // NEW DRAFT
+      isDraft: true,
       isTrashed: false,
-      photos: []
+      photos: [],
+      habitValues: {} // Explicit initialization
     };
 
     setSyncStatus('auto_syncing');
@@ -660,12 +660,9 @@ export default function App() {
   };
 
   const handleEditorCancel = () => {
-      // If it was a new entry (still a draft and not saved as final), discard it completely
       if (draftEntry.isDraft) {
            setData(prev => ({ ...prev, entries: prev.entries.filter(e => e.id !== draftEntry.id) }));
       }
-      // If it was an existing entry being edited, logic above ignores it (since isDraft is likely false if it was previously saved),
-      // effectively reverting changes because we just reset the editor state without saving.
       resetEditor();
   };
 
@@ -979,6 +976,32 @@ export default function App() {
                             )}
                         </div>
 
+                        {/* Habits Display in Modal */}
+                        {selectedEntry.habitValues && Object.keys(selectedEntry.habitValues).length > 0 && (
+                            <div className="pt-6 border-t border-current border-opacity-10">
+                                <h4 className={`text-xs font-bold uppercase mb-3 flex items-center gap-2 ${themeClasses.accent}`}>
+                                    <Activity className="w-3 h-3" /> {t('editor.habits_title')}
+                                </h4>
+                                <div className="flex flex-wrap gap-2">
+                                    {Object.entries(selectedEntry.habitValues).map(([id, val]) => {
+                                        // Find habit definition
+                                        const habitDef = data.habits?.find(h => h.id === id);
+                                        if (!habitDef || (typeof val === 'boolean' && !val)) return null;
+                                        
+                                        return (
+                                            <div key={id} className={`px-3 py-1.5 rounded-lg border text-sm font-medium flex items-center gap-2 bg-emerald-500/10 text-emerald-500 border-emerald-500/20`}>
+                                                {habitDef.type === 'boolean' ? <CheckCircle2 className="w-4 h-4" /> : <Hash className="w-4 h-4" />}
+                                                <span>{habitDef.title}</span>
+                                                {habitDef.type === 'value' && (
+                                                    <span className="font-bold ml-1 bg-white/10 px-1.5 rounded">{val} {habitDef.unit}</span>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
                         {galleryImages.length > 0 && (
                             <div className="pt-8 border-t border-current border-opacity-10">
                                 <h3 className={`text-lg font-bold mb-4 flex items-center gap-2 ${themeClasses.accent}`}><ImageIcon className="w-5 h-5" /> {t('app.photo_gallery')}</h3>
@@ -1066,6 +1089,7 @@ export default function App() {
                     <p>{t('common.loading')}</p>
                 </div>
             ) : isEditing ? (
+                // Use the Component instead of inline function
                 <EntryEditor 
                     entry={draftEntry}
                     onChange={handleEditorChange}
@@ -1074,6 +1098,7 @@ export default function App() {
                     onDelete={() => softDeleteEntry(draftEntry.id)}
                     activeCategory={activeCategory}
                     questions={data.questions}
+                    habits={showHabits ? (data.habits || []) : []} // Ensure habits array
                     settings={data.settings}
                     templates={data.templates}
                     onSaveTemplate={saveTemplate}
@@ -1191,21 +1216,24 @@ export default function App() {
                     <div className="flex flex-col gap-4 mb-6">
                          {/* Controls Row */}
                          <div className="flex flex-wrap items-center gap-4 justify-between">
-                             <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
-                                 {activeTab === 'entries' && (
+                             <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 no-scrollbar">
+                                 {isAdmin && (
                                     <div className="flex bg-black/5 p-1 rounded-lg border border-black/5 mr-2">
+                                        <button onClick={() => setActiveTab('entries')} className={`px-3 py-1 rounded text-xs font-bold transition-colors ${activeTab === 'entries' ? themeClasses.primaryBtn : 'opacity-50 hover:opacity-100'}`}>{t('app.entries_tab')}</button>
+                                        <button onClick={() => setActiveTab('questions')} className={`px-3 py-1 rounded text-xs font-bold transition-colors ${activeTab === 'questions' ? themeClasses.primaryBtn : 'opacity-50 hover:opacity-100'}`}>{t('app.questions_tab')}</button>
+                                        {/* New Habit Tab */}
+                                        {showHabits && (
+                                            <button onClick={() => setActiveTab('habits')} className={`px-3 py-1 rounded text-xs font-bold transition-colors ${activeTab === 'habits' ? themeClasses.primaryBtn : 'opacity-50 hover:opacity-100'}`}>{t('nav.habits')}</button>
+                                        )}
+                                    </div>
+                                 )}
+                                 {activeTab === 'entries' && (
+                                    <div className="flex bg-black/5 p-1 rounded-lg border border-black/5">
                                         <button onClick={() => handleViewModeChange('grid')} className={`p-1.5 rounded transition-colors ${viewMode === 'grid' ? themeClasses.primaryBtn : 'opacity-50 hover:opacity-100'}`} title="Grid"><Layout className="w-4 h-4" /></button>
                                         <button onClick={() => handleViewModeChange('timeline')} className={`p-1.5 rounded transition-colors ${viewMode === 'timeline' ? themeClasses.primaryBtn : 'opacity-50 hover:opacity-100'}`} title="Timeline"><List className="w-4 h-4" /></button>
                                         <button onClick={() => handleViewModeChange('calendar')} className={`p-1.5 rounded transition-colors ${viewMode === 'calendar' ? themeClasses.primaryBtn : 'opacity-50 hover:opacity-100'}`} title="Calendar"><Calendar className="w-4 h-4" /></button>
                                         <button onClick={() => handleViewModeChange('atlas')} className={`p-1.5 rounded transition-colors ${viewMode === 'atlas' ? themeClasses.primaryBtn : 'opacity-50 hover:opacity-100'}`} title="Map"><MapIcon className="w-4 h-4" /></button>
                                         <button onClick={() => handleViewModeChange('gallery')} className={`p-1.5 rounded transition-colors ${viewMode === 'gallery' ? themeClasses.primaryBtn : 'opacity-50 hover:opacity-100'}`} title="Gallery"><Images className="w-4 h-4" /></button>
-                                    </div>
-                                 )}
-                                 
-                                 {isAdmin && (
-                                    <div className="flex bg-black/5 p-1 rounded-lg border border-black/5">
-                                        <button onClick={() => setActiveTab('entries')} className={`px-3 py-1 rounded text-xs font-bold transition-colors ${activeTab === 'entries' ? themeClasses.primaryBtn : 'opacity-50 hover:opacity-100'}`}>{t('app.entries_tab')}</button>
-                                        <button onClick={() => setActiveTab('questions')} className={`px-3 py-1 rounded text-xs font-bold transition-colors ${activeTab === 'questions' ? themeClasses.primaryBtn : 'opacity-50 hover:opacity-100'}`}>{t('app.questions_tab')}</button>
                                     </div>
                                  )}
                              </div>
@@ -1283,6 +1311,17 @@ export default function App() {
                             themeClasses={themeClasses}
                             t={t} 
                         />
+                    ) : activeTab === 'habits' ? (
+                        <HabitManager 
+                            habits={data.habits || []}
+                            activeCategory={activeCategory}
+                            onAdd={(newHabit) => setData(p => ({...p, habits: [...(p.habits || []), newHabit]}))}
+                            onEdit={(updated) => setData(p => ({...p, habits: (p.habits || []).map(h => h.id === updated.id ? updated : h)}))}
+                            onToggle={(id) => setData(p => ({...p, habits: (p.habits || []).map(h => h.id===id ? {...h, isActive: !h.isActive} : h)}))}
+                            onDelete={(id) => setData(p => ({...p, habits: (p.habits || []).filter(h => h.id !== id)}))}
+                            themeClasses={themeClasses}
+                            t={t}
+                        />
                     ) : (
                         <div className="animate-fade-in">
                             {(viewMode === 'grid' || viewMode === 'timeline') && (
@@ -1296,7 +1335,7 @@ export default function App() {
                                         isAdmin={isAdmin}
                                         t={t}
                                         gridLayout={data.settings?.gridLayout}
-                                        weatherPack={weatherPack} // Pass Pack
+                                        weatherPack={weatherPack} 
                                         emojiStyle={emojiStyle}
                                     />
                                     {/* Sentinel for Infinite Scroll */}

@@ -14,6 +14,16 @@ export interface Question {
   isActive: boolean;
 }
 
+export interface Habit {
+    id: string;
+    title: string;
+    type: 'boolean' | 'value'; // checkbox or counter
+    target?: number; // e.g. 5 (glasses of water)
+    unit?: string; // e.g. 'dl', 'km', 'pages'
+    category: Category;
+    isActive: boolean;
+}
+
 export interface Template {
     id: string;
     name: string;
@@ -36,6 +46,7 @@ export interface Entry {
   title?: string;
   category: Category;
   responses: Record<string, string>; // Used for 'structured' mode
+  habitValues?: Record<string, number | boolean>; // New: Store habit data { habitId: value }
   entryMode?: 'structured' | 'free'; // New: Toggle between questions and free text
   freeTextContent?: string; // New: Content for free text mode
   mood?: string;
@@ -117,6 +128,7 @@ export interface AppSettings {
   categoryConfigs?: Record<Category, CategoryConfig>; // New: View preferences per category
   publicConfig?: PublicConfig; // New: Global visibility settings
   enableStats?: boolean; // Toggle Statistics view
+  enableHabits?: boolean; // New: Toggle Habit Tracker
   enableGamification?: boolean; // Toggle Streak/Gamification features
   minWordCount?: number; // New: Minimum expected word count
   showWordCount?: boolean; // New: Toggle visibility of word count
@@ -125,6 +137,7 @@ export interface AppSettings {
 
 export interface AppData {
   questions: Question[];
+  habits?: Habit[]; // New: Habit definitions
   entries: Entry[];
   settings?: AppSettings;
   templates?: Template[]; // New: Custom Templates

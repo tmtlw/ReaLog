@@ -10,6 +10,7 @@ const LEGACY_STORAGE_KEY = 'grind_diary_data_v1';
 const KEY_ENTRIES = 'grind_entries';
 const KEY_SETTINGS = 'grind_settings';
 const KEY_QUESTIONS = 'grind_questions';
+const KEY_HABITS = 'grind_habits'; // New key
 const KEY_AUTH_SESSION = 'grind_auth_session';
 const KEY_IS_DIRTY = 'grind_is_dirty'; // Tracks if local changes need push
 
@@ -67,12 +68,14 @@ export const loadData = (): AppData => {
     const rawEntries = localStorage.getItem(KEY_ENTRIES);
     const rawSettings = localStorage.getItem(KEY_SETTINGS);
     const rawQuestions = localStorage.getItem(KEY_QUESTIONS);
+    const rawHabits = localStorage.getItem(KEY_HABITS);
 
     if (rawEntries || rawSettings) {
         return {
             entries: rawEntries ? JSON.parse(rawEntries) : [],
             settings: rawSettings ? JSON.parse(rawSettings) : {},
-            questions: rawQuestions ? JSON.parse(rawQuestions) : INITIAL_DATA.questions
+            questions: rawQuestions ? JSON.parse(rawQuestions) : INITIAL_DATA.questions,
+            habits: rawHabits ? JSON.parse(rawHabits) : INITIAL_DATA.habits
         };
     }
 
@@ -86,9 +89,11 @@ export const loadData = (): AppData => {
         localStorage.setItem(KEY_ENTRIES, JSON.stringify(parsed.entries || []));
         localStorage.setItem(KEY_SETTINGS, JSON.stringify(parsed.settings || {}));
         localStorage.setItem(KEY_QUESTIONS, JSON.stringify(parsed.questions || INITIAL_DATA.questions));
+        localStorage.setItem(KEY_HABITS, JSON.stringify(parsed.habits || INITIAL_DATA.habits));
         
         // Return parsed data
         if (!parsed.settings) parsed.settings = {};
+        if (!parsed.habits) parsed.habits = INITIAL_DATA.habits;
         return parsed;
     }
 
@@ -105,6 +110,7 @@ export const saveData = (data: AppData): void => {
     localStorage.setItem(KEY_ENTRIES, JSON.stringify(data.entries));
     localStorage.setItem(KEY_SETTINGS, JSON.stringify(data.settings));
     localStorage.setItem(KEY_QUESTIONS, JSON.stringify(data.questions));
+    localStorage.setItem(KEY_HABITS, JSON.stringify(data.habits || []));
     
     // Flag as dirty (needs sync) by default when saving locally
     // If connected to server, serverSave will be called and potentially succeed
@@ -133,10 +139,6 @@ export const setupBackgroundSync = (onSyncStart: () => void, onSyncEnd: (success
             onSyncStart();
             const data = loadData();
             try {
-                // Try Server first if configured? 
-                // We assume the app state knows the mode, but here we just try generic server save as basic implementation
-                // Ideally this would check what mode was last active. For now, we attempt Self-Hosted sync if dirty.
-                
                 await serverSave(data);
                 setDirty(false);
                 onSyncEnd(true);
@@ -344,7 +346,6 @@ export const uploadImage = async (file: File): Promise<string> => {
     return json.url;
 };
 
-// --- New Feature: Download Font URL and Save to Server ---
 export const saveFont = async (urlOrBase64: string, filename: string): Promise<string> => {
     let base64data = "";
 
@@ -389,7 +390,7 @@ export const saveFont = async (urlOrBase64: string, filename: string): Promise<s
     }
     const json = await res.json();
     if (json.error) throw new Error(json.error);
-    return json.path; // returns relative path e.g. "fonts/openmoji.woff2"
+    return json.path; 
 };
 
 // --- Cloud Storage (REST API - External) ---
@@ -417,11 +418,12 @@ export const cloudLoad = async (config: any): Promise<AppData | null> => {
 
     const json = await response.json();
     
-    if (json.record && (json.record.entries || json.record.questions)) {
+    // Check for various JSONBin structures or flat export
+    if (json.record && (json.record.entries || json.record.questions || json.record.habits)) {
         return json.record as AppData;
     }
     
-    if (json.entries || json.questions) {
+    if (json.entries || json.questions || json.habits) {
         return json as AppData;
     }
     

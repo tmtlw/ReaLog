@@ -5,52 +5,32 @@ export interface ChangeLogItem {
     changes: string[];
 }
 
-export const APP_VERSION = "4.7.7";
+export const APP_VERSION = "4.8.3";
 
 export const CHANGELOG: ChangeLogItem[] = [
     {
-        version: "4.7.7",
-        date: "2024-12-13",
+        version: "4.8.3",
+        date: "2024-12-14",
         changes: [
-            "Javítás: Frissítési folyamat hibatűrésének javítása (API 404 Fallback).",
-            "Javítás: Instabil Emoji font CDN linkek cseréje fix verziókra.",
-            "Stabilitás: Témakezelő és fontletöltő modul optimalizálása."
+            "Javítás: Szokások kezelőjében (Új hozzáadása) a szám és mértékegység mezők színeinek javítása sötét módban."
         ]
     },
     {
-        version: "4.7.6",
-        date: "2024-12-12",
+        version: "4.8.2",
+        date: "2024-12-14",
         changes: [
-            "Új funkció: WordPress-szerű, biztonságos frissítési folyamat.",
-            "Biztonság: Automatikus rendszermentés (System Backup) frissítés előtt.",
-            "Javítás: Frissítési hiba (404) kezelése fallback mechanizmussal.",
-            "UI: Részletes állapotjelző a frissítés során."
+            "Funkció: Szokások szerkesztése (név, cél, mértékegység) a kezelőfelületen.",
+            "UI: Számlálós szokásoknál (pl. víz) közvetlen érték megadása input mezővel.",
+            "Javítás: Kisebb UI igazítások a sötét módban."
         ]
     },
     {
-        version: "4.7.5",
-        date: "2024-12-12",
+        version: "4.8.1",
+        date: "2024-12-14",
         changes: [
-            "Javítás: Hibás Emoji betűtípusok (CDN 404) javítása/eltávolítása.",
-            "Optimalizáció: Stabilabb font betöltés.",
-            "Rendszer: Verziókövetés frissítése."
-        ]
-    },
-    {
-        version: "4.7.4",
-        date: "2024-12-12",
-        changes: [
-            "Javítás: Kritikus rendszerfájl (index.tsx) helyreállítása a GitHub szinkronizációhoz.",
-            "Rendszer: Verziókövetés szinkronizálása."
-        ]
-    },
-    {
-        version: "4.7.3",
-        date: "2024-12-12",
-        changes: [
-            "Új funkció: Időbélyegző gomb a szerkesztőben (aktuális idő beszúrása).",
-            "Új funkció: Obsidian / Markdown exportálás (.zip csomagban, mapparendszerrel).",
-            "UI fejlesztés: Vizuális folyamatjelző sáv a napi szószám cél követéséhez."
+            "Javítás: Szokások mentése és betöltése (Storage & Server Sync).",
+            "Javítás: Sötét módban a beviteli mezők szövegszínének korrigálása.",
+            "Javítás: Új bejegyzés létrehozásakor a szokások most már megjelennek."
         ]
     }
 ];

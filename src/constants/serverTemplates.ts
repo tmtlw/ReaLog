@@ -17,6 +17,7 @@ const TAGS_FILE = path.join(POSTS_DIR, 'tags.json');
 // Questions: Default in root, Custom in posts
 const DEFAULT_QUESTIONS_FILE = path.join(__dirname, 'questions.json');
 const CUSTOM_QUESTIONS_FILE = path.join(POSTS_DIR, 'questions.json');
+const HABITS_FILE = path.join(POSTS_DIR, 'habits.json'); // Added Habits File
 
 // Ensure directories exist
 if (!fs.existsSync(IMG_DIR)) fs.mkdirSync(IMG_DIR);
@@ -51,7 +52,7 @@ const getAllEntries = (dir, fileList = []) => {
         if (stat.isDirectory()) {
             getAllEntries(filePath, fileList);
         } else {
-            if (file.endsWith('.json') && file !== 'tags.json' && file !== 'questions.json') {
+            if (file.endsWith('.json') && file !== 'tags.json' && file !== 'questions.json' && file !== 'habits.json') {
                 try {
                     const content = JSON.parse(fs.readFileSync(filePath, 'utf8'));
                     if (Array.isArray(content)) {
@@ -72,7 +73,7 @@ const deleteFolderRecursive = (dirPath) => {
             if (fs.lstatSync(curPath).isDirectory()) {
                 deleteFolderRecursive(curPath);
             } else {
-                if (file !== 'tags.json' && file !== 'questions.json') {
+                if (file !== 'tags.json' && file !== 'questions.json' && file !== 'habits.json') {
                     fs.unlinkSync(curPath);
                 }
             }
@@ -123,6 +124,7 @@ try {
             let entries = [];
             let settings = {};
             let questions = [];
+            let habits = [];
 
             entries = getAllEntries(POSTS_DIR);
 
@@ -155,8 +157,13 @@ try {
             } else {
                 questions = defaultQuestions;
             }
+
+            // Habits Load
+            if (fs.existsSync(HABITS_FILE)) {
+                try { habits = JSON.parse(fs.readFileSync(HABITS_FILE, 'utf8')); } catch(e) {}
+            }
             
-            send({ entries, settings, questions });
+            send({ entries, settings, questions, habits });
         }
     }
     else if (method === 'POST') {
@@ -174,9 +181,11 @@ try {
                     const entries = getAllEntries(POSTS_DIR);
                     let settings = {};
                     let questions = [];
+                    let habits = [];
                     if (fs.existsSync(SETTINGS_FILE)) settings = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
                     if (fs.existsSync(CUSTOM_QUESTIONS_FILE)) questions = JSON.parse(fs.readFileSync(CUSTOM_QUESTIONS_FILE, 'utf8'));
-                    fs.writeFileSync(backupFile, JSON.stringify({ entries, settings, questions }), 'utf8');
+                    if (fs.existsSync(HABITS_FILE)) habits = JSON.parse(fs.readFileSync(HABITS_FILE, 'utf8'));
+                    fs.writeFileSync(backupFile, JSON.stringify({ entries, settings, questions, habits }), 'utf8');
                     send({ success: true, file: \`backup-\${timestamp}.json\` });
                 }
                 else if (action === 'system_backup') {
@@ -206,6 +215,7 @@ try {
                         deleteFolderRecursive(POSTS_DIR);
                         if (!fs.existsSync(POSTS_DIR)) fs.mkdirSync(POSTS_DIR);
                         if (data.questions) fs.writeFileSync(CUSTOM_QUESTIONS_FILE, JSON.stringify(data.questions), 'utf8');
+                        if (data.habits) fs.writeFileSync(HABITS_FILE, JSON.stringify(data.habits), 'utf8');
                         if (data.settings) fs.writeFileSync(SETTINGS_FILE, JSON.stringify(data.settings), 'utf8');
                         if (data.entries) {
                             const grouped = {};
@@ -240,9 +250,12 @@ try {
                     if (!fs.existsSync(POSTS_DIR)) fs.mkdirSync(POSTS_DIR);
                     let questions = null;
                     if (fs.existsSync(CUSTOM_QUESTIONS_FILE)) questions = fs.readFileSync(CUSTOM_QUESTIONS_FILE);
+                    let habits = null;
+                    if (fs.existsSync(HABITS_FILE)) habits = fs.readFileSync(HABITS_FILE);
                     deleteFolderRecursive(POSTS_DIR);
                     if (!fs.existsSync(POSTS_DIR)) fs.mkdirSync(POSTS_DIR);
                     if (questions) fs.writeFileSync(CUSTOM_QUESTIONS_FILE, questions);
+                    if (habits) fs.writeFileSync(HABITS_FILE, habits);
                     send({ success: true });
                 }
                 else if (action === 'save_font') {
@@ -272,6 +285,7 @@ try {
                 else {
                     // Standard Save
                     if (input.questions) fs.writeFileSync(CUSTOM_QUESTIONS_FILE, JSON.stringify(input.questions), 'utf8');
+                    if (input.habits) fs.writeFileSync(HABITS_FILE, JSON.stringify(input.habits), 'utf8');
                     if (input.settings) fs.writeFileSync(SETTINGS_FILE, JSON.stringify(input.settings), 'utf8');
                     if (input.entries) {
                         const grouped = {};
@@ -357,6 +371,7 @@ $tagsFile = $postsDir . '/tags.json';
 // Questions logic: Default in root, Custom in posts
 $defaultQuestionsFile = __DIR__ . '/questions.json';
 $customQuestionsFile = $postsDir . '/questions.json';
+$habitsFile = $postsDir . '/habits.json';
 
 if (!file_exists($imgDir)) mkdir($imgDir, 0755, true);
 if (!file_exists($fontsDir)) mkdir($fontsDir, 0755, true);
@@ -373,7 +388,7 @@ function rmdir_recursive($dir) {
         if ('.' === $file || '..' === $file) continue;
         if (is_dir("$dir/$file")) rmdir_recursive("$dir/$file");
         else {
-            if ($file !== 'questions.json' && $file !== 'tags.json') unlink("$dir/$file");
+            if ($file !== 'questions.json' && $file !== 'tags.json' && $file !== 'habits.json') unlink("$dir/$file");
         }
     }
 }
@@ -443,9 +458,10 @@ if ($method === 'GET') {
         $entries = [];
         $settings = [];
         $questions = [];
+        $habits = [];
         $files = glob($postsDir . '/*/*.json');
         foreach ($files as $file) {
-            if (basename($file) === 'tags.json' || basename($file) === 'questions.json') continue;
+            if (basename($file) === 'tags.json' || basename($file) === 'questions.json' || basename($file) === 'habits.json') continue;
             $content = file_get_contents($file);
             $decoded = json_decode($content, true);
             if (is_array($decoded)) {
@@ -475,10 +491,18 @@ if ($method === 'GET') {
             if (is_array($cusQ)) foreach($cusQ as $q) $qMap[$q['id']] = $q;
         }
         $questions = array_values($qMap);
+        
+        if (file_exists($habitsFile)) {
+            $content = file_get_contents($habitsFile);
+            $decoded = json_decode($content, true);
+            if(is_array($decoded)) $habits = $decoded;
+        }
+
         echo json_encode([
             'entries' => $entries,
             'settings' => $settings,
-            'questions' => $questions
+            'questions' => $questions,
+            'habits' => $habits
         ]);
     }
 
@@ -498,14 +522,15 @@ if ($method === 'GET') {
             $entries = [];
             $files = glob($postsDir . '/*/*.json');
             foreach ($files as $file) {
-                if (basename($file) === 'tags.json' || basename($file) === 'questions.json') continue;
+                if (basename($file) === 'tags.json' || basename($file) === 'questions.json' || basename($file) === 'habits.json') continue;
                 $c = file_get_contents($file);
                 $d = json_decode($c, true);
                 if (is_array($d)) $entries = array_merge($entries, $d);
             }
             $settings = file_exists($settingsFile) ? json_decode(file_get_contents($settingsFile), true) : [];
             $questions = file_exists($customQuestionsFile) ? json_decode(file_get_contents($customQuestionsFile), true) : [];
-            file_put_contents($backupFile, json_encode(['entries' => $entries, 'settings' => $settings, 'questions' => $questions]));
+            $habits = file_exists($habitsFile) ? json_decode(file_get_contents($habitsFile), true) : [];
+            file_put_contents($backupFile, json_encode(['entries' => $entries, 'settings' => $settings, 'questions' => $questions, 'habits' => $habits]));
             echo json_encode(['success' => true, 'file' => "backup-$timestamp.json"]);
         }
         elseif ($action === 'system_backup') {
@@ -533,6 +558,7 @@ if ($method === 'GET') {
                 rmdir_recursive($postsDir);
                 if (isset($data['settings'])) file_put_contents($settingsFile, json_encode($data['settings']));
                 if (isset($data['questions'])) file_put_contents($customQuestionsFile, json_encode($data['questions']));
+                if (isset($data['habits'])) file_put_contents($habitsFile, json_encode($data['habits']));
                 if (isset($data['entries'])) {
                     $grouped = [];
                     $allTags = [];
@@ -593,6 +619,7 @@ if ($method === 'GET') {
         }
         else {
             if (isset($json['questions'])) file_put_contents($customQuestionsFile, json_encode($json['questions']));
+            if (isset($json['habits'])) file_put_contents($habitsFile, json_encode($json['habits']));
             if (isset($json['settings'])) file_put_contents($settingsFile, json_encode($json['settings']));
             if (isset($json['entries'])) {
                 $grouped = [];

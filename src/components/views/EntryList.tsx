@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Book, Layout, List, Calendar, Map as MapIcon, Images, FileText, ThermometerSun, MapPin, Clock } from 'lucide-react';
+import { Book, Layout, List, Calendar, Map as MapIcon, Images, FileText, ThermometerSun, MapPin, Clock, CheckCircle2, Hash } from 'lucide-react';
 import { Entry, Category, WeatherIconPack, EmojiStyle } from '../../types';
 import { CATEGORY_COLORS, CATEGORY_HOVER_BORDERS, CATEGORY_TEXT_COLORS } from '../../constants';
 import { Card } from '../ui';
@@ -69,6 +69,28 @@ const EntryList: React.FC<EntryListProps> = ({
         );
     };
 
+    // Render Habits Chips
+    const renderHabitBadges = (e: Entry) => {
+        if (!e.habitValues) return null;
+        const habits = Object.entries(e.habitValues).filter(([_, val]) => !!val);
+        if (habits.length === 0) return null;
+
+        return (
+            <div className="flex flex-wrap gap-1 mt-2">
+                {habits.map(([id, val]) => {
+                    const isBool = typeof val === 'boolean';
+                    if (isBool && !val) return null;
+                    return (
+                        <span key={id} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                            {isBool ? <CheckCircle2 className="w-3 h-3" /> : <Hash className="w-3 h-3" />}
+                            {!isBool && val}
+                        </span>
+                    );
+                })}
+            </div>
+        );
+    };
+
     const EntryCard = ({ entry: e }: { entry: Entry }) => {
         const coverPhoto = e.photos && e.photos.length > 0 ? e.photos[0] : e.photo;
         const readTime = getReadTime(e);
@@ -119,6 +141,7 @@ const EntryList: React.FC<EntryListProps> = ({
                             </div>
                         </div>
                         {renderMetaInfo(e)}
+                        {renderHabitBadges(e)}
                     </div>
                 </div>
             </Card>
@@ -220,6 +243,7 @@ const EntryList: React.FC<EntryListProps> = ({
                                             <div className="mt-3 pt-2 border-t border-white/5 flex flex-wrap items-center justify-between gap-2">
                                                 <div className="flex-1">
                                                     {renderMetaInfo(e)}
+                                                    {renderHabitBadges(e)}
                                                 </div>
                                                 <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity gap-2" onClick={ev => ev.stopPropagation()}>
                                                     {renderActionButtons(e)}

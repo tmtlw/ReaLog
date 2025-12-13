@@ -59,6 +59,7 @@ const hu = {
         login: 'Admin belépés',
         entries: 'Bejegyzések',
         questions: 'Kérdések',
+        habits: 'Szokások',
         appearance: 'Kinézet',
         menu: 'Menü',
         trash: 'Kuka'
@@ -116,6 +117,7 @@ const hu = {
         secret_tab: 'Titok (Ünnepek)',
         weather_desc: 'Válaszd ki, hogyan jelenjenek meg az időjárás ikonok az egész alkalmazásban.',
         emoji_desc: 'Válaszd ki a hangulatjelek (emojik) megjelenési stílusát.',
+        // ... (rest of theme translations)
         weather_outline: 'Vonalas (Lucide)',
         weather_filled: 'Teli (Filled)',
         weather_color: 'Színes',
@@ -165,6 +167,7 @@ const hu = {
             about: 'Rólam',
             data: 'Adatkezelés'
         },
+        // ... (rest of settings)
         theme: 'Téma',
         language: 'Nyelv',
         weather_api: 'OpenWeatherMap API Kulcs',
@@ -200,6 +203,7 @@ const hu = {
         features: 'Funkciók',
         enable_stats: 'Statisztikák megjelenítése',
         enable_gamification: 'Játékosítás (Streak) megjelenítése',
+        enable_habits: 'Szokáskövető megjelenítése',
         grid_layout: 'Rács Nézet Elrendezés',
         layout_standard: 'Standard (Sorfolytonos)',
         layout_masonry: 'Masonry (Pinterest-szerű)',
@@ -213,6 +217,7 @@ const hu = {
         update_btn: 'Frissítés Telepítése',
         whats_new: 'Újdonságok'
     },
+    // ... (rest of translations)
     update: {
         in_progress: 'Frissítés folyamatban...',
         success: 'Sikeres frissítés!',
@@ -308,7 +313,8 @@ const hu = {
         sort_name: 'Név',
         sort_date: 'Dátum',
         map_preview: 'Térkép',
-        insert_time: 'Idő beszúrása'
+        insert_time: 'Idő beszúrása',
+        habits_title: 'Szokások',
     },
     questions: {
         title: 'Kérdések kezelése',
@@ -318,6 +324,18 @@ const hu = {
         inactive: 'Inaktív',
         select_category: 'Válassz kategóriát'
     },
+    habits: {
+        title: 'Szokások Kezelése',
+        add_new: 'Új szokás hozzáadása',
+        name_placeholder: 'Szokás neve (pl. Olvasás)',
+        type_boolean: 'Eldöntendő (Pipa)',
+        type_value: 'Számláló (Érték)',
+        unit_placeholder: 'Mértékegység (pl. pohár)',
+        goal_placeholder: 'Cél (pl. 8)',
+        active: 'Aktív',
+        inactive: 'Inaktív'
+    },
+    // ... (rest)
     deploy: {
         title: 'ReaLog Telepítése',
         subtitle: 'Saját Szerver',
