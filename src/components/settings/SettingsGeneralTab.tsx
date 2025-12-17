@@ -21,7 +21,11 @@ const SettingsGeneralTab: React.FC<SettingsGeneralTabProps> = ({ localSettings, 
                 <label className={`text-xs uppercase font-bold ${themeClasses.subtext}`}>{t('settings.theme')}</label>
                 <div className="grid grid-cols-2 gap-2 mt-2">
                     {(['light', 'dark', 'lavender', 'system'] as const).map(t => (
-                        <button key={t} onClick={() => { setCurrentTheme(t); setLocalSettings(prev => ({...prev, theme: t})) }} 
+                        <button key={t} onClick={() => { 
+                                setCurrentTheme(t); 
+                                // Explicitly unset activeHoliday to prevent sticky behavior
+                                setLocalSettings(prev => ({...prev, theme: t, activeHoliday: undefined})) 
+                            }} 
                             className={`p-2 rounded border text-sm capitalize ${currentTheme === t ? themeClasses.accent + ' border-current' : 'border-transparent bg-black/5'}`}>
                             {t}
                         </button>

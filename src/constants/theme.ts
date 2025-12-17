@@ -14,7 +14,7 @@ export interface ThemeColors {
     statusBar: string;
 }
 
-export type ThemeKey = 'dark' | 'light' | 'lavender' | 'system' | 'custom' | 'holiday';
+export type ThemeKey = 'dark' | 'light' | 'lavender' | 'nord' | 'forest' | 'ocean' | 'sunset' | 'coffee' | 'rose' | 'cyberpunk' | 'system' | 'custom' | 'holiday';
 
 // Helper to generate tailwind classes from hex and determine text color
 const c = (hex: string, label: string) => {
@@ -82,12 +82,13 @@ export const ACCENT_COLORS = {
     c50: c('#4a044e', 'Dark Orchid'),
 };
 
-export const generateCustomTheme = (base: 'light' | 'dark', accentKey: keyof typeof ACCENT_COLORS): ThemeColors => {
+export const generateCustomTheme = (base: 'light' | 'dark', accentKey: keyof typeof ACCENT_COLORS, customBg?: string): ThemeColors => {
     const accent = ACCENT_COLORS[accentKey] || ACCENT_COLORS['c22'];
+    const bgColor = customBg ? 'bg-transparent' : (base === 'dark' ? 'bg-zinc-950' : 'bg-slate-50');
     
     if (base === 'dark') {
         return {
-            bg: 'bg-zinc-950',
+            bg: bgColor,
             text: 'text-zinc-100',
             card: 'bg-zinc-900 border-zinc-800',
             input: `bg-zinc-950 border-zinc-700 ${accent.ring} text-zinc-100`,
@@ -100,7 +101,7 @@ export const generateCustomTheme = (base: 'light' | 'dark', accentKey: keyof typ
         };
     } else {
         return {
-            bg: 'bg-slate-50',
+            bg: bgColor,
             text: 'text-slate-900',
             card: 'bg-white border-slate-200 shadow-sm',
             input: `bg-white border-slate-300 ${accent.ring} text-slate-900`,
@@ -154,6 +155,90 @@ export const THEMES: Record<string, ThemeColors> = {
         secondaryBtn: 'bg-white hover:bg-[#fae8ff] text-[#86198f] border-[#e879f9]',
         subtext: 'text-[#86198f]', 
         statusBar: 'bg-[#fdf4ff] border-[#f0abfc] text-[#86198f]'
+    },
+    nord: {
+        bg: 'bg-[#2e3440]',
+        text: 'text-[#eceff4]',
+        card: 'bg-[#3b4252] border-[#4c566a]',
+        input: 'bg-[#3b4252] border-[#434c5e] focus:ring-[#88c0d0] text-[#eceff4]',
+        nav: 'bg-[#2e3440]/90 border-[#4c566a]',
+        accent: 'text-[#88c0d0]',
+        primaryBtn: 'bg-[#5e81ac] hover:bg-[#81a1c1] text-white',
+        secondaryBtn: 'bg-[#3b4252] hover:bg-[#434c5e] text-[#d8dee9] border-[#4c566a]',
+        subtext: 'text-[#d8dee9]',
+        statusBar: 'bg-[#2e3440] border-[#4c566a] text-[#d8dee9]'
+    },
+    forest: {
+        bg: 'bg-[#0f2415]',
+        text: 'text-[#e2e8f0]',
+        card: 'bg-[#143320] border-[#1e4a2e]',
+        input: 'bg-[#143320] border-[#2d5c3e] focus:ring-[#4ade80] text-[#e2e8f0]',
+        nav: 'bg-[#0f2415]/90 border-[#1e4a2e]',
+        accent: 'text-[#4ade80]',
+        primaryBtn: 'bg-[#15803d] hover:bg-[#166534] text-white',
+        secondaryBtn: 'bg-[#143320] hover:bg-[#1a4028] text-[#cbd5e1] border-[#1e4a2e]',
+        subtext: 'text-[#94a3b8]',
+        statusBar: 'bg-[#0f2415] border-[#1e4a2e] text-[#94a3b8]'
+    },
+    ocean: {
+        bg: 'bg-[#0f172a]', // Slate 900
+        text: 'text-[#f1f5f9]',
+        card: 'bg-[#1e293b] border-[#334155]',
+        input: 'bg-[#1e293b] border-[#334155] focus:ring-[#38bdf8] text-[#f1f5f9]',
+        nav: 'bg-[#0f172a]/90 border-[#1e293b]',
+        accent: 'text-[#38bdf8]', // Sky 400
+        primaryBtn: 'bg-[#0ea5e9] hover:bg-[#0284c7] text-white',
+        secondaryBtn: 'bg-[#1e293b] hover:bg-[#334155] text-[#cbd5e1] border-[#334155]',
+        subtext: 'text-[#94a3b8]',
+        statusBar: 'bg-[#0f172a] border-[#1e293b] text-[#94a3b8]'
+    },
+    sunset: {
+        bg: 'bg-[#431407]', // Orange 950 base
+        text: 'text-[#ffedd5]',
+        card: 'bg-[#7c2d12] border-[#9a3412]',
+        input: 'bg-[#7c2d12] border-[#9a3412] focus:ring-[#fb923c] text-[#ffedd5]',
+        nav: 'bg-[#431407]/90 border-[#7c2d12]',
+        accent: 'text-[#fb923c]', // Orange 400
+        primaryBtn: 'bg-gradient-to-r from-red-500 to-orange-500 hover:opacity-90 text-white',
+        secondaryBtn: 'bg-[#7c2d12] hover:bg-[#9a3412] text-[#fdba74] border-[#9a3412]',
+        subtext: 'text-[#fdba74]',
+        statusBar: 'bg-[#431407] border-[#7c2d12] text-[#fdba74]'
+    },
+    coffee: {
+        bg: 'bg-[#292524]', // Stone 800
+        text: 'text-[#e7e5e4]', // Stone 200
+        card: 'bg-[#44403c] border-[#57534e]',
+        input: 'bg-[#44403c] border-[#57534e] focus:ring-[#d6d3d1] text-[#e7e5e4]',
+        nav: 'bg-[#292524]/90 border-[#44403c]',
+        accent: 'text-[#d6d3d1]', // Stone 300
+        primaryBtn: 'bg-[#78350f] hover:bg-[#92400e] text-[#f5f5f4]',
+        secondaryBtn: 'bg-[#44403c] hover:bg-[#57534e] text-[#d6d3d1] border-[#57534e]',
+        subtext: 'text-[#a8a29e]',
+        statusBar: 'bg-[#292524] border-[#44403c] text-[#a8a29e]'
+    },
+    rose: {
+        bg: 'bg-[#fff1f2]', // Rose 50
+        text: 'text-[#881337]', // Rose 900
+        card: 'bg-white border-[#fecdd3]',
+        input: 'bg-white border-[#fda4af] focus:ring-[#e11d48] text-[#881337]',
+        nav: 'bg-[#fff1f2]/90 border-[#ffe4e6]',
+        accent: 'text-[#e11d48]', // Rose 600
+        primaryBtn: 'bg-[#e11d48] hover:bg-[#be123c] text-white',
+        secondaryBtn: 'bg-white hover:bg-[#ffe4e6] text-[#be123c] border-[#fecdd3]',
+        subtext: 'text-[#9f1239]',
+        statusBar: 'bg-[#fff1f2] border-[#ffe4e6] text-[#9f1239]'
+    },
+    cyberpunk: {
+        bg: 'bg-[#000000]',
+        text: 'text-[#fcee0a]', // Yellow
+        card: 'bg-[#1a1a1a] border-[#00f0ff]', // Cyan border
+        input: 'bg-[#000000] border-[#fcee0a] focus:ring-[#00f0ff] text-[#fcee0a]',
+        nav: 'bg-[#000000]/90 border-[#fcee0a]',
+        accent: 'text-[#00f0ff]',
+        primaryBtn: 'bg-[#fcee0a] text-black hover:bg-[#fff700] font-bold',
+        secondaryBtn: 'bg-[#1a1a1a] border-[#00f0ff] text-[#00f0ff]',
+        subtext: 'text-[#00f0ff]',
+        statusBar: 'bg-[#000000] border-[#fcee0a] text-[#fcee0a]'
     }
 };
 
@@ -204,6 +289,12 @@ const MOVABLE_DATES: Record<string, string[]> = {
         '2024-12-25', '2025-12-14', '2026-12-04', '2027-12-24', '2028-12-12', '2029-12-02', '2030-12-20', '2031-12-10', '2032-11-28', '2033-12-16',
         '2034-12-06', '2035-12-26', '2036-12-14', '2037-12-03', '2038-12-23', '2039-12-12', '2040-12-01', '2041-12-19', '2042-12-08', '2043-12-27',
         '2044-12-15', '2045-12-05', '2046-12-24', '2047-12-13', '2048-12-02', '2049-12-21', '2050-12-10'
+    ],
+    easter: [ // Easter Sunday
+        '2024-03-31', '2025-04-20', '2026-04-05', '2027-03-28', '2028-04-16', '2029-04-01', '2030-04-21',
+        '2031-04-13', '2032-03-28', '2033-04-17', '2034-04-09', '2035-03-25', '2036-04-13', '2037-04-05',
+        '2038-04-25', '2039-04-10', '2040-04-01', '2041-04-21', '2042-04-06', '2043-03-29', '2044-04-17',
+        '2045-04-09', '2046-03-25', '2047-04-14', '2048-04-05', '2049-04-18', '2050-04-10'
     ]
 };
 
@@ -234,15 +325,17 @@ const getNthDayDisplayDate = (year: number, month: number, weekday: number, nth:
     return new Date(year, month - 1, day).toLocaleDateString('hu-HU', {month:'long', day:'numeric'});
 };
 
-const checkHanukkah = (d: Date) => {
-    const iso = d.toISOString().split('T')[0];
-    const starts = MOVABLE_DATES['hanukkah'];
-    for(const start of starts) {
-        const s = new Date(start);
-        const diff = (d.getTime() - s.getTime()) / (1000 * 3600 * 24);
-        if (diff >= 0 && diff < 8) return true;
-    }
-    return false;
+// Hanukkah only on first day
+const checkHanukkah = (d: Date) => checkMovable(d, 'hanukkah');
+
+// Easter exception: Sunday and Monday (multi-day)
+const checkEaster = (d: Date) => {
+    // Check Sunday
+    if (checkMovable(d, 'easter')) return true;
+    // Check Monday (if yesterday was Easter Sunday)
+    const yesterday = new Date(d);
+    yesterday.setDate(d.getDate() - 1);
+    return checkMovable(yesterday, 'easter');
 };
 
 export const HOLIDAY_THEMES: HolidayTheme[] = [
@@ -339,6 +432,25 @@ export const HOLIDAY_THEMES: HolidayTheme[] = [
             secondaryBtn: 'bg-white border-sky-200 text-slate-500',
             subtext: 'text-sky-400',
             statusBar: 'bg-sky-50 border-pink-100 text-slate-500'
+        }
+    },
+    {
+        id: 'easter',
+        name: 'Húsvét',
+        emoji: '🐰',
+        match: (d) => checkEaster(d),
+        getDisplayDate: (y) => getMovableDisplayDate('easter', y),
+        colors: {
+            bg: 'bg-lime-50',
+            text: 'text-lime-900',
+            card: 'bg-white border-lime-200',
+            input: 'bg-white border-lime-300 focus:ring-green-500 text-lime-900',
+            nav: 'bg-white/90 border-lime-200',
+            accent: 'text-green-600',
+            primaryBtn: 'bg-lime-500 text-white hover:bg-lime-600',
+            secondaryBtn: 'bg-white border-lime-200 text-lime-700',
+            subtext: 'text-lime-500',
+            statusBar: 'bg-lime-50 border-lime-200 text-lime-600'
         }
     },
     {

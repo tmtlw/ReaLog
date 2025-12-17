@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { Entry } from '../../types';
 import { CATEGORY_COLORS } from '../../constants';
 
@@ -26,6 +27,7 @@ const CalendarView: React.FC<{
 
     const today = new Date();
     const isToday = (d: number) => year === today.getFullYear() && month === today.getMonth() && d === today.getDate();
+    const isCurrentMonthView = year === today.getFullYear() && month === today.getMonth();
 
     const getEntriesForDay = (d: number) => {
         return entries.filter(e => {
@@ -37,7 +39,7 @@ const CalendarView: React.FC<{
     };
 
     return (
-        <div className="animate-fade-in">
+        <div className="animate-fade-in relative">
             {/* Calendar Header */}
             <div className={`flex items-center justify-between mb-4 p-4 rounded-lg border ${themeClasses.card}`}>
                 <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-black/5 rounded-full"><ChevronLeft className="w-5 h-5" /></button>
@@ -46,6 +48,17 @@ const CalendarView: React.FC<{
                 </div>
                 <button onClick={() => changeMonth(1)} className="p-2 hover:bg-black/5 rounded-full"><ChevronRight className="w-5 h-5" /></button>
             </div>
+
+            {/* Jump to Today Button */}
+            {!isCurrentMonthView && (
+                <button 
+                    onClick={() => onDateChange(new Date())}
+                    className="absolute top-4 right-16 p-2 rounded-full bg-emerald-500 text-white shadow-lg hover:bg-emerald-600 transition-all z-10"
+                    title={t ? t('common.jump_today') : 'Today'}
+                >
+                    <CalendarIcon className="w-4 h-4" />
+                </button>
+            )}
 
             {/* Weekday Headers */}
             <div className="grid grid-cols-7 gap-1 mb-2 text-center text-xs font-bold opacity-60">

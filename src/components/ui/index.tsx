@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 export const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { 
@@ -29,9 +30,9 @@ export const Card: React.FC<{ children: React.ReactNode; className?: string; the
   </div>
 );
 
-export const Input = ({ themeClasses, ...props }: any) => (
+export const Input = ({ themeClasses, className, ...props }: any) => (
     <input 
-        className={`w-full rounded-lg px-4 py-2 focus:ring-2 focus:outline-none transition-all placeholder-opacity-50 ${themeClasses?.input}`}
+        className={`w-full rounded-lg px-4 py-2 focus:ring-2 focus:outline-none transition-all placeholder-opacity-50 ${themeClasses?.input} ${className || ''}`}
         {...props}
     />
 );

@@ -1,14 +1,17 @@
+
 import React, { useState } from 'react';
 import { Terminal, X, Server, CheckCircle2, HardDrive, Clock, MapPin, FileText, CloudLightning, ChevronRight } from 'lucide-react';
+import { CloudConfig } from '../../types';
 
 const StorageDebugMenu: React.FC<{
     onClose: () => void;
     onSwitchMode: (mode: 'server' | 'local') => Promise<void>;
     serverMode: boolean;
+    cloudConfig?: CloudConfig;
     lastError: string;
     themeClasses: any;
     t: (key: string) => string;
-}> = ({ onClose, onSwitchMode, serverMode, lastError, themeClasses, t }) => {
+}> = ({ onClose, onSwitchMode, serverMode, cloudConfig, lastError, themeClasses, t }) => {
     const [loading, setLoading] = useState(false);
     const [testResult, setTestResult] = useState("");
 

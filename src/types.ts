@@ -10,60 +10,68 @@ export interface Question {
   id: string;
   text: string;
   category: Category;
-  subCategory?: string; // New: Specific topic category
+  subCategory?: string;
   isActive: boolean;
 }
 
 export interface Habit {
     id: string;
     title: string;
-    type: 'boolean' | 'value'; // checkbox or counter
-    target?: number; // e.g. 5 (glasses of water)
-    unit?: string; // e.g. 'dl', 'km', 'pages'
+    type: 'boolean' | 'value';
+    target?: number;
+    unit?: string;
+    icon?: string;
     category: Category;
     isActive: boolean;
+}
+
+export interface Notebook {
+    id: string;
+    name: string;
+    icon?: string;
 }
 
 export interface Template {
     id: string;
     name: string;
-    questions: string[]; // List of question texts
+    questions: string[];
     category: Category;
-    isDefault?: boolean; // New: Default template for category
+    isDefault?: boolean;
 }
 
 export interface WeatherData {
   temp: number;
-  condition: string; // e.g., 'Clouds', 'Clear'
+  condition: string;
   location: string;
   icon?: string;
 }
 
 export interface Entry {
   id: string;
+  notebookId?: string;
   timestamp: number;
   dateLabel: string;
   title?: string;
   category: Category;
-  responses: Record<string, string>; // Used for 'structured' mode
-  habitValues?: Record<string, number | boolean>; // New: Store habit data { habitId: value }
-  entryMode?: 'structured' | 'free'; // New: Toggle between questions and free text
-  freeTextContent?: string; // New: Content for free text mode
+  responses: Record<string, string>;
+  habitValues?: Record<string, number | boolean>;
+  entryMode?: 'structured' | 'free';
+  freeTextContent?: string;
   mood?: string;
-  photo?: string; // Legacy: Single photo (kept for compatibility)
-  photos?: string[]; // New: Multiple photos
+  photo?: string;
+  photos?: string[];
   weather?: WeatherData;
-  location?: string; // Visible address/city
-  gps?: { lat: number; lon: number }; // Hidden GPS coordinates
-  isPrivate?: boolean; // New: Hide entire post from public
-  isLocationPrivate?: boolean; // New: Hide from map only
-  tags?: string[]; // New: Array of extracted hashtags
-  isDraft?: boolean; // New: Draft status for auto-save
-  isTrashed?: boolean; // New: Soft delete status
+  location?: string;
+  gps?: { lat: number; lon: number };
+  isPrivate?: boolean;
+  isLocationPrivate?: boolean;
+  tags?: string[];
+  isDraft?: boolean;
+  isTrashed?: boolean;
+  isFavorite?: boolean;
 }
 
-// Updated ThemeOption to include custom
-export type ThemeOption = 'dark' | 'light' | 'lavender' | 'system' | 'custom' | 'holiday';
+export type ThemeOption = 'dark' | 'light' | 'lavender' | 'nord' | 'forest' | 'ocean' | 'sunset' | 'coffee' | 'rose' | 'cyberpunk' | 'system' | 'custom' | 'holiday';
 export type WeatherIconPack = 'outline' | 'filled' | 'color' | 'emoji' | 'ascii' | 'thin' | 'bold' | 'cartoon' | 'mono-duotone' | 'neon';
 export type EmojiStyle = 'noto' | 'noto-mono' | 'openmoji' | 'emojidex' | 'native' | 'grayscale' | 'sepia' | 'neon' | 'pop' | 'soft' | 'retro' | 'glitch';
 
@@ -81,14 +89,15 @@ export interface PublicConfig {
 
 export interface CustomThemeConfig {
     base: 'light' | 'dark';
-    accent: string; // key of ACCENT_COLORS
+    accent: string;
+    customBg?: string;
 }
 
 export interface TypographyConfig {
-    fontFamily: string; // Google Font name or 'Custom'
-    fontSize: number; // Base pixel size (e.g. 14, 16)
+    fontFamily: string;
+    fontSize: number;
     customFontName?: string;
-    customFontData?: string; // Base64 or Path
+    customFontData?: string;
 }
 
 export interface SavedLocation {
@@ -96,7 +105,7 @@ export interface SavedLocation {
     name: string;
     lat: number;
     lon: number;
-    timestamp?: number; // New for sorting
+    timestamp?: number;
 }
 
 export interface CloudConfig {
@@ -107,40 +116,41 @@ export interface CloudConfig {
 }
 
 export interface AppSettings {
-  userName?: string; // Custom display name
-  adminPassword?: string; // Custom password
-  profileImage?: string; // For book export
-  bookCoverImage?: string; // For book export
-  openWeatherMapKey?: string;
+  userName?: string;
+  adminPassword?: string;
+  profileImage?: string;
+  bookCoverImage?: string;
   theme?: ThemeOption;
-  activeHoliday?: string; // New: ID of the forced holiday theme
-  customTheme?: CustomThemeConfig; // Configuration for the 'custom' theme
-  typography?: TypographyConfig; // New: Font settings
-  weatherIconPack?: WeatherIconPack; // New: Selected weather icon set
-  emojiStyle?: EmojiStyle; // New: Selected emoji rendering style
-  offlineFonts?: boolean; // New: Use local fonts for emojis/system
-  savedLocations?: SavedLocation[]; // New: User saved places
+  activeHoliday?: string;
+  customTheme?: CustomThemeConfig;
+  typography?: TypographyConfig;
+  weatherIconPack?: WeatherIconPack;
+  emojiStyle?: EmojiStyle;
+  offlineFonts?: boolean;
+  savedLocations?: SavedLocation[];
   language?: string; 
-  moods?: string[]; // New: Custom emojis
+  moods?: string[];
   cloud?: CloudConfig;
-  gridLayout?: 'standard' | 'masonry'; // New: Layout preference for Grid View
-  statsLayout?: string[]; // New: Order of stats widgets
-  categoryConfigs?: Record<Category, CategoryConfig>; // New: View preferences per category
-  publicConfig?: PublicConfig; // New: Global visibility settings
-  enableStats?: boolean; // Toggle Statistics view
-  enableHabits?: boolean; // New: Toggle Habit Tracker
-  enableGamification?: boolean; // Toggle Streak/Gamification features
-  minWordCount?: number; // New: Minimum expected word count
-  showWordCount?: boolean; // New: Toggle visibility of word count
-  dev?: boolean; // New: Enable Developer/Secret features
+  gridLayout?: 'standard' | 'masonry';
+  statsLayout?: string[];
+  entryModalLayout?: string[];
+  entryMapSize?: 'small' | 'medium' | 'large';
+  categoryConfigs?: Record<Category, CategoryConfig>;
+  publicConfig?: PublicConfig;
+  enableStats?: boolean;
+  enableHabits?: boolean;
+  enableGamification?: boolean;
+  minWordCount?: number;
+  showWordCount?: boolean;
+  dev?: boolean;
 }
 
 export interface AppData {
   questions: Question[];
-  habits?: Habit[]; // New: Habit definitions
+  habits?: Habit[];
   entries: Entry[];
   settings?: AppSettings;
-  templates?: Template[]; // New: Custom Templates
+  templates?: Template[];
 }
 
 export interface QuoteData {

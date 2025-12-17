@@ -9,6 +9,8 @@ const hu = {
         cancel: 'Mégse',
         delete: 'Törlés',
         edit: 'Szerkesztés',
+        copy: 'Másolás',
+        favorite: 'Kedvenc',
         yes: 'Igen',
         no: 'Nem',
         ok: 'OK',
@@ -26,7 +28,11 @@ const hu = {
         perm_delete: 'Végleges törlés',
         empty_trash: 'A kuka üres.',
         empty_trash_btn: 'Kuka ürítése',
-        confirm_empty_trash: 'Biztosan véglegesen törölsz MINDEN elemet a kukából?'
+        confirm_empty_trash: 'Biztosan véglegesen törölsz MINDEN elemet a kukából?',
+        jump_today: 'Ugrás a mára',
+        good_morning: 'Jó reggelt',
+        good_afternoon: 'Szép napot',
+        good_evening: 'Szép estét'
     },
     category: {
         daily: 'Napi',
@@ -46,6 +52,36 @@ const hu = {
         dreams: 'Tervek álmok',
         achieved: 'Elért célok'
     },
+    weather: {
+        wmo_0: 'Tiszta égbolt',
+        wmo_1: 'Túlnyomóan derűs',
+        wmo_2: 'Változóan felhős',
+        wmo_3: 'Borult',
+        wmo_45: 'Köd',
+        wmo_48: 'Zúzmarás köd',
+        wmo_51: 'Szitálás: Gyenge',
+        wmo_53: 'Szitálás: Mérsékelt',
+        wmo_55: 'Szitálás: Sűrű',
+        wmo_56: 'Ónos szitálás: Gyenge',
+        wmo_57: 'Ónos szitálás: Sűrű',
+        wmo_61: 'Eső: Gyenge',
+        wmo_63: 'Eső: Mérsékelt',
+        wmo_65: 'Eső: Erős',
+        wmo_66: 'Ónos eső: Gyenge',
+        wmo_67: 'Ónos eső: Erős',
+        wmo_71: 'Havazás: Gyenge',
+        wmo_73: 'Havazás: Mérsékelt',
+        wmo_75: 'Havazás: Erős',
+        wmo_77: 'Hódara',
+        wmo_80: 'Zápor: Gyenge',
+        wmo_81: 'Zápor: Mérsékelt',
+        wmo_82: 'Zápor: Heves',
+        wmo_85: 'Hózápor: Gyenge',
+        wmo_86: 'Hózápor: Erős',
+        wmo_95: 'Zivatar',
+        wmo_96: 'Zivatar jégesővel (gyenge)',
+        wmo_99: 'Zivatar jégesővel (erős)'
+    },
     nav: {
         map: 'Térkép',
         gallery: 'Galéria',
@@ -62,7 +98,8 @@ const hu = {
         habits: 'Szokások',
         appearance: 'Kinézet',
         menu: 'Menü',
-        trash: 'Kuka'
+        trash: 'Kuka',
+        random: 'Véletlen emlék'
     },
     filters: {
         title: 'Részletes szűrők',
@@ -117,7 +154,6 @@ const hu = {
         secret_tab: 'Titok (Ünnepek)',
         weather_desc: 'Válaszd ki, hogyan jelenjenek meg az időjárás ikonok az egész alkalmazásban.',
         emoji_desc: 'Válaszd ki a hangulatjelek (emojik) megjelenési stílusát.',
-        // ... (rest of theme translations)
         weather_outline: 'Vonalas (Lucide)',
         weather_filled: 'Teli (Filled)',
         weather_color: 'Színes',
@@ -154,7 +190,8 @@ const hu = {
         upload_font: 'Saját betűtípus feltöltése (.ttf, .woff)',
         upload_btn: 'Betűtípus Feltöltés',
         font_placeholder: 'Válassz a listából...',
-        search_fonts: 'Betűtípus keresése...'
+        search_fonts: 'Betűtípus keresése...',
+        custom_bg: 'Háttérszín'
     },
     settings: {
         title: 'Beállítások',
@@ -165,12 +202,11 @@ const hu = {
             public: 'Publikus',
             account: 'Fiók',
             about: 'Rólam',
-            data: 'Adatkezelés'
+            data: 'Adatkezelés',
+            layout: 'Elrendezés'
         },
-        // ... (rest of settings)
         theme: 'Téma',
         language: 'Nyelv',
-        weather_api: 'OpenWeatherMap API Kulcs',
         display_name: 'Megjelenített Név',
         account_hint_name: 'pl. Rea (Ebből lesz: ReaLog)',
         admin_password: 'Új Admin Jelszó',
@@ -215,9 +251,21 @@ const hu = {
         uptodate: 'A rendszer naprakész',
         update_error: 'Hiba a verzió ellenőrzésekor',
         update_btn: 'Frissítés Telepítése',
-        whats_new: 'Újdonságok'
+        whats_new: 'Újdonságok',
+        layout_desc: 'Itt állíthatod be a bejegyzések részletes nézetének (modális ablak) sorrendjét.',
+        layout_header: 'Fejléc (Cím, Dátum, Időjárás)',
+        layout_tags: 'Címkék',
+        layout_mood: 'Hangulat',
+        layout_content: 'Tartalom (Szöveg / Kérdések)',
+        layout_habits: 'Szokások',
+        layout_gallery: 'Galéria',
+        layout_map: 'Térkép',
+        map_size: 'Térkép mérete',
+        map_small: 'Kicsi',
+        map_medium: 'Közepes',
+        map_large: 'Nagy',
+        dev_mode: 'Fejlesztői Mód'
     },
-    // ... (rest of translations)
     update: {
         in_progress: 'Frissítés folyamatban...',
         success: 'Sikeres frissítés!',
@@ -229,7 +277,7 @@ const hu = {
         backup_error: 'Nem sikerült biztonsági mentést készíteni. A frissítés leállt.'
     },
     tags: {
-        manager_title: 'Címke Menedzser',
+        manager_title: 'Címkék',
         manage_btn: 'Kezelés',
         back_btn: 'Vissza a felhőhöz',
         rename: 'Átnevezés',
@@ -239,7 +287,9 @@ const hu = {
         new_name_placeholder: 'Új címke név...',
         rename_success: 'Címke sikeresen átnevezve!',
         delete_success: 'Címke törölve.',
-        count: 'db'
+        count: 'db',
+        view_cloud: 'Címkefelhő',
+        view_list: 'Szerkesztés'
     },
     status: {
         server_online: 'Szerver: Online',
@@ -281,7 +331,10 @@ const hu = {
         file_too_large: 'Túl nagy fájl (max 5MB).',
         questions_tab: 'Kérdések',
         entries_tab: 'Bejegyzések',
-        read_time: '{min} perc olvasás'
+        read_time: '{min} perc olvasás',
+        zen_mode: 'Fókusz mód',
+        zoom_in: 'Nagyítás',
+        zoom_out: 'Kicsinyítés'
     },
     editor: {
         title: 'Cím',
@@ -315,6 +368,7 @@ const hu = {
         map_preview: 'Térkép',
         insert_time: 'Idő beszúrása',
         habits_title: 'Szokások',
+        weather_history_error: 'Az időjárás lekérése sikertelen.',
     },
     questions: {
         title: 'Kérdések kezelése',
@@ -333,9 +387,10 @@ const hu = {
         unit_placeholder: 'Mértékegység (pl. pohár)',
         goal_placeholder: 'Cél (pl. 8)',
         active: 'Aktív',
-        inactive: 'Inaktív'
+        inactive: 'Inaktív',
+        icon: 'Ikon',
+        select_icon: 'Válassz ikont'
     },
-    // ... (rest)
     deploy: {
         title: 'ReaLog Telepítése',
         subtitle: 'Saját Szerver',

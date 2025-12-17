@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Info, ExternalLink, Heart, AlertTriangle, CheckCircle2, Download } from 'lucide-react';
+import { Info, ExternalLink, Heart, AlertTriangle, CheckCircle2, Download, Terminal } from 'lucide-react';
 import { Button } from '../ui';
 import { APP_VERSION, CHANGELOG } from '../../changelog';
 import UpdateModal from '../modals/UpdateModal';
@@ -11,9 +11,14 @@ interface SettingsAboutTabProps {
     isCheckingUpdate: boolean;
     updateInfo: {version: string, changes: string[], url: string, error?: string} | null;
     cardBg: string;
+    isDevMode?: boolean; 
+    onToggleDevMode?: (enabled: boolean) => void;
 }
 
-const SettingsAboutTab: React.FC<SettingsAboutTabProps> = ({ themeClasses, t, isCheckingUpdate, updateInfo, cardBg }) => {
+const SettingsAboutTab: React.FC<SettingsAboutTabProps> = ({ 
+    themeClasses, t, isCheckingUpdate, updateInfo, cardBg, 
+    isDevMode, onToggleDevMode 
+}) => {
     const [showUpdateModal, setShowUpdateModal] = useState(false);
     
     // Determine Update State
@@ -86,6 +91,22 @@ const SettingsAboutTab: React.FC<SettingsAboutTabProps> = ({ themeClasses, t, is
             
             <div className="flex-1 overflow-y-auto p-6 bg-black/5 min-h-0">
                 <div className="p-0 space-y-6">
+                    {/* Dev Mode Toggle */}
+                    {onToggleDevMode && (
+                        <div className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-white/5">
+                            <div className="flex items-center gap-2">
+                                <Terminal className="w-4 h-4 opacity-70" />
+                                <span className="text-xs font-bold uppercase">{t('settings.dev_mode')}</span>
+                            </div>
+                            <input 
+                                type="checkbox" 
+                                checked={isDevMode ?? false} 
+                                onChange={(e) => onToggleDevMode(e.target.checked)} 
+                                className="accent-purple-500 w-4 h-4 cursor-pointer"
+                            />
+                        </div>
+                    )}
+
                     <div className="flex items-center gap-2 font-bold text-xs uppercase opacity-70 mb-4 sticky top-0 bg-transparent">
                         <Info className="w-4 h-4" /> Változásnapló
                     </div>

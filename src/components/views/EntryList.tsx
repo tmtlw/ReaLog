@@ -1,11 +1,21 @@
 
 import React from 'react';
-import { Book, Layout, List, Calendar, Map as MapIcon, Images, FileText, ThermometerSun, MapPin, Clock, CheckCircle2, Hash } from 'lucide-react';
-import { Entry, Category, WeatherIconPack, EmojiStyle } from '../../types';
-import { CATEGORY_COLORS, CATEGORY_HOVER_BORDERS, CATEGORY_TEXT_COLORS } from '../../constants';
+import { Book, Layout, List, Calendar, Map as MapIcon, Images, FileText, ThermometerSun, MapPin, Clock, CheckCircle2, Hash, Activity, Book as BookIcon, Droplets, Moon, Sun, DollarSign, Briefcase, Heart, Brain, Music, PenTool, Code, Leaf, Coffee, Utensils, Zap, Award, Target, Flag, Bike, Dumbbell, Footprints, Bed, ShowerHead, Timer, Watch, Smartphone, Laptop, Gamepad2, ShoppingCart, Home, Car, Plane, Brush, Camera, Headphones, Gift, Star, Smile, Frown, Users, Phone, Mail } from 'lucide-react';
+import { Entry, Category, WeatherIconPack, EmojiStyle, Habit } from '../../types';
+import { CATEGORY_COLORS, CATEGORY_HOVER_BORDERS, CATEGORY_TEXT_COLORS, INITIAL_DATA } from '../../constants';
 import { Card } from '../ui';
 import WeatherRenderer from '../ui/WeatherRenderer';
 import EmojiRenderer from '../ui/EmojiRenderer';
+import * as StorageService from '../../services/storage';
+
+// Inline Dynamic Icon helper for List view
+const DynamicIcon = ({ name, className }: { name: string, className?: string }) => {
+    const iconMap: Record<string, any> = {
+        Activity, Book: BookIcon, Droplets, Moon, Sun, DollarSign, Briefcase, Heart, Brain, Music, PenTool, Code, Leaf, Coffee, Utensils, Zap, Award, Target, Flag, Bike, Dumbbell, Footprints, Bed, ShowerHead, Timer, Watch, Smartphone, Laptop, Gamepad2, ShoppingCart, Home, Car, Plane, Brush, Camera, Headphones, Gift, Star, Smile, Frown, Users, Phone, Mail
+    };
+    const IconComponent = iconMap[name] || Activity;
+    return <IconComponent className={className} />;
+};
 
 interface EntryListProps {
     viewMode: 'grid' | 'timeline' | 'calendar' | 'atlas' | 'gallery';
@@ -23,6 +33,8 @@ interface EntryListProps {
 const EntryList: React.FC<EntryListProps> = ({
     viewMode, entries, onSelectEntry, renderActionButtons, themeClasses, isAdmin, t, gridLayout = 'standard', weatherPack = 'outline', emojiStyle = 'native'
 }) => {
+    
+    const habits: Habit[] = StorageService.loadData().habits || [];
 
     const getCatLabel = (cat: Category) => t(`category.${cat.toLowerCase()}`);
 
@@ -62,7 +74,7 @@ const EntryList: React.FC<EntryListProps> = ({
                 {showWeather && e.weather && (
                     <span className="flex items-center gap-1">
                         <WeatherRenderer data={e.weather} pack={weatherPack} className="w-3 h-3" />
-                        {e.weather.temp}°C, {e.weather.condition}
+                        {e.weather.temp}°C, {e.weather.condition.startsWith('wmo_') ? t('weather.' + e.weather.condition) : e.weather.condition}
                     </span>
                 )}
             </div>
@@ -72,17 +84,25 @@ const EntryList: React.FC<EntryListProps> = ({
     // Render Habits Chips
     const renderHabitBadges = (e: Entry) => {
         if (!e.habitValues) return null;
-        const habits = Object.entries(e.habitValues).filter(([_, val]) => !!val);
-        if (habits.length === 0) return null;
+        const activeHabitIds = Object.entries(e.habitValues).filter(([_, val]) => !!val).map(x => x[0]);
+        if (activeHabitIds.length === 0) return null;
 
         return (
             <div className="flex flex-wrap gap-1 mt-2">
-                {habits.map(([id, val]) => {
+                {activeHabitIds.map((id) => {
+                    const val = e.habitValues![id];
+                    const habitDef = habits.find(h => h.id === id);
                     const isBool = typeof val === 'boolean';
                     if (isBool && !val) return null;
+                    
+                    // Icon logic: Use habitDef icon if available, else default
+                    const IconComp = habitDef?.icon 
+                        ? <DynamicIcon name={habitDef.icon} className="w-3 h-3" /> 
+                        : (isBool ? <CheckCircle2 className="w-3 h-3" /> : <Hash className="w-3 h-3" />);
+
                     return (
-                        <span key={id} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                            {isBool ? <CheckCircle2 className="w-3 h-3" /> : <Hash className="w-3 h-3" />}
+                        <span key={id} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" title={habitDef?.title}>
+                            {IconComp}
                             {!isBool && val}
                         </span>
                     );
@@ -92,22 +112,19 @@ const EntryList: React.FC<EntryListProps> = ({
     };
 
     const EntryCard = ({ entry: e }: { entry: Entry }) => {
-        const coverPhoto = e.photos && e.photos.length > 0 ? e.photos[0] : e.photo;
         const readTime = getReadTime(e);
+        const coverPhoto = e.photos && e.photos.length > 0 ? e.photos[0] : e.photo;
         
         return (
             <Card themeClasses={themeClasses} className={`group transition-colors flex flex-col h-full relative ${e.isDraft ? 'border-dashed border-2 border-orange-500/50' : 'hover:border-emerald-500/50'}`}>
+                {/* Hero Image Restored for Grid View */}
                 {coverPhoto && (
-                    <div className="h-32 overflow-hidden relative cursor-pointer flex-shrink-0" onClick={() => onSelectEntry(e)}>
+                    <div className="h-32 w-full overflow-hidden relative border-b border-current border-opacity-10 cursor-pointer" onClick={() => onSelectEntry(e)}>
                         <img src={coverPhoto} alt="cover" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                        {e.photos && e.photos.length > 1 && (
-                            <div className="absolute bottom-2 right-2 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1">
-                                <Images className="w-3 h-3" /> {e.photos.length}
-                            </div>
-                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                 )}
+                
                 <div className="p-5 flex-1 flex flex-col min-h-0" onClick={() => onSelectEntry(e)}>
                     <div className="flex justify-between items-start mb-2">
                         <div className="flex gap-2">

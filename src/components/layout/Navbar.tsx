@@ -1,10 +1,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  Map as MapIcon, Images, Download, Server, Settings, LogOut, Lock, Menu, Hash, CalendarClock, BookOpen, Palette, ChevronDown, Monitor, MoreVertical, Trash2, PieChart, Trophy, Upload
+  Map as MapIcon, Images, Download, Server, Settings, LogOut, Lock, Menu, Hash, CalendarClock, Palette, Monitor, MoreVertical, Trash2, PieChart, Trophy, Upload, Book, Dices
 } from 'lucide-react';
 import { Category } from '../../types';
-import { CATEGORY_LABELS, CATEGORY_COLORS } from '../../constants';
 import { Button } from '../ui';
 import EmojiRenderer from '../ui/EmojiRenderer';
 
@@ -22,6 +21,7 @@ interface NavbarProps {
     onOpenThemeEditor: () => void;
     onLogout: () => void;
     onOpenAuth: () => void;
+    onRandomEntry?: () => void;
     themeClasses: any;
     showMobileMenu: boolean;
     setShowMobileMenu: (show: boolean) => void;
@@ -30,18 +30,19 @@ interface NavbarProps {
     showGamification: boolean;
     currentStreak: number;
     logoEmoji?: string | null;
+    greeting?: string;
 }
 
 const Navbar: React.FC<NavbarProps> = ({
     appName, activeCategory, setActiveCategory, globalView, setGlobalView, setActiveTab,
-    isAdmin, onOpenExport, onOpenDeploy, onOpenSettings, onOpenThemeEditor, onLogout, onOpenAuth,
+    isAdmin, onOpenExport, onOpenDeploy, onOpenSettings, onOpenThemeEditor, onLogout, onOpenAuth, onRandomEntry,
     themeClasses, showMobileMenu, setShowMobileMenu, t, showStats, showGamification, currentStreak,
-    logoEmoji
+    logoEmoji, greeting
 }) => {
     const [showDesktopMenu, setShowDesktopMenu] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
-    // Close desktop menu on outside click
+    // Close menus on outside click
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -54,8 +55,6 @@ const Navbar: React.FC<NavbarProps> = ({
 
     const getCategoryButtonClass = (cat: Category, isActive: boolean) => {
         if (!isActive) return 'opacity-60 hover:opacity-100 bg-transparent';
-        
-        // Return fixed colors instead of theme-dependent ones
         switch (cat) {
             case Category.DAILY: return 'bg-emerald-500 text-white shadow-md scale-105';
             case Category.WEEKLY: return 'bg-blue-500 text-white shadow-md scale-105';
@@ -71,14 +70,18 @@ const Navbar: React.FC<NavbarProps> = ({
                 
                 {/* Left Side: Logo & Desktop Categories */}
                 <div className="flex items-center gap-4 flex-1 md:flex-initial overflow-hidden">
-                     <div className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center shadow-lg ${logoEmoji ? 'bg-transparent text-2xl' : 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/20'}`}>
+                     <div className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center shadow-lg ${logoEmoji ? 'bg-transparent text-2xl' : `${themeClasses.primaryBtn} shadow-md`}`}>
                          {logoEmoji ? (
                              <EmojiRenderer emoji={logoEmoji} style="native" />
                          ) : (
-                             <BookOpen className="w-5 h-5 text-white" />
+                             <Book className="w-5 h-5" />
                          )}
                      </div>
-                     <span className="font-bold text-lg hidden md:block tracking-tight">{appName}</span>
+                     
+                     <div className="flex flex-col hidden md:flex min-w-[100px]">
+                         <span className="font-bold text-lg tracking-tight leading-none truncate">{appName}</span>
+                         {greeting && <span className="text-[10px] opacity-60 italic leading-none mt-0.5">{greeting}</span>}
+                     </div>
 
                      {/* Categories */}
                      <div className="flex items-center gap-1 bg-black/5 p-1 rounded-lg border border-black/5 overflow-x-auto no-scrollbar ml-2 md:ml-0">
@@ -111,6 +114,11 @@ const Navbar: React.FC<NavbarProps> = ({
 
                     {/* Desktop View Icons - Hidden on Mobile */}
                     <div className="hidden md:flex items-center gap-2">
+                        {onRandomEntry && (
+                            <button onClick={onRandomEntry} className="p-2 rounded-lg transition-all opacity-50 hover:opacity-100 hover:bg-black/5" title={t('nav.random')}>
+                                <Dices className="w-5 h-5" />
+                            </button>
+                        )}
                         <button onClick={() => setGlobalView('onThisDay')} className={`p-2 rounded-lg transition-all ${globalView === 'onThisDay' ? themeClasses.accent + ' bg-black/5' : 'opacity-50 hover:opacity-100'}`} title={t('nav.on_this_day')}>
                             <CalendarClock className="w-5 h-5" />
                         </button>
@@ -190,6 +198,7 @@ const Navbar: React.FC<NavbarProps> = ({
             {/* Mobile Menu Dropdown */}
             {showMobileMenu && (
                 <div className="md:hidden border-t p-4 space-y-4 animate-fade-in bg-inherit">
+                    
                     {showGamification && (
                         <button onClick={() => { setGlobalView('streak'); setShowMobileMenu(false); }} className="w-full flex items-center justify-center gap-2 mb-4 p-2 bg-orange-500/10 rounded-lg">
                             <Trophy className="w-5 h-5 text-orange-500" />
@@ -219,6 +228,12 @@ const Navbar: React.FC<NavbarProps> = ({
                             <Images className="w-5 h-5" />
                             <span className="text-[10px]">{t('nav.gallery')}</span>
                         </button>
+                        {onRandomEntry && (
+                            <button onClick={() => { onRandomEntry(); setShowMobileMenu(false); }} className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-all opacity-50 hover:opacity-100 hover:bg-black/5`}>
+                                <Dices className="w-5 h-5" />
+                                <span className="text-[10px]">{t('nav.random')}</span>
+                            </button>
+                        )}
                     </div>
 
                     {isAdmin && (

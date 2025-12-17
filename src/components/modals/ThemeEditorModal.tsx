@@ -9,9 +9,15 @@ import WeatherRenderer from '../ui/WeatherRenderer';
 import EmojiRenderer from '../ui/EmojiRenderer';
 import * as StorageService from '../../services/storage';
 
+// All 10 Packs
+const WEATHER_PACKS: WeatherIconPack[] = [
+    'outline', 'filled', 'color', 'emoji', 'ascii', 
+    'thin', 'bold', 'cartoon', 'mono-duotone', 'neon'
+];
+
 // Extracted Preview Components to prevent re-creation on render
 const WeatherPreview: React.FC<{ pack: WeatherIconPack, currentPack: WeatherIconPack, onSelect: (p: WeatherIconPack) => void, t: any }> = ({ pack, currentPack, onSelect, t }) => {
-    // Mock data for preview
+    // Mock data for preview (using generic text conditions, Renderer will map them)
     const conditions: any[] = [
         { condition: 'Clear', icon: '01d' },
         { condition: 'Clouds', icon: '02d' },
@@ -26,7 +32,7 @@ const WeatherPreview: React.FC<{ pack: WeatherIconPack, currentPack: WeatherIcon
             className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${currentPack === pack ? 'border-emerald-500 bg-emerald-500/10' : 'border-transparent bg-black/5 hover:border-white/10'}`}
         >
             <div className="flex justify-between items-center mb-3">
-                <span className="font-bold text-sm uppercase">{t(`theme.weather_${pack}`)}</span>
+                <span className="font-bold text-sm uppercase">{t(`weather.${pack}`)}</span>
                 {currentPack === pack && <Check className="w-4 h-4 text-emerald-500" />}
             </div>
             <div className="flex justify-between items-center gap-2 overflow-x-auto no-scrollbar pb-1">
@@ -60,6 +66,49 @@ const EmojiPreview: React.FC<{ style: EmojiStyle, currentStyle: EmojiStyle, onSe
     );
 };
 
+interface PreviewCardProps {
+    classes: any;
+    label: string;
+    active: boolean;
+    onClick?: () => void;
+    noTranslate?: boolean;
+    t: (k: string) => string;
+}
+
+const PreviewCard: React.FC<PreviewCardProps> = ({ classes, label, active, onClick, noTranslate, t }) => (
+    <div className={`relative rounded-xl overflow-hidden border-2 transition-all cursor-pointer group ${active ? 'border-emerald-500 scale-[1.02] shadow-lg' : 'border-transparent hover:border-white/20'}`}
+         onClick={onClick}
+    >
+        <div className={`h-32 p-3 ${classes.bg} flex flex-col gap-2`}>
+            <div className="flex gap-2">
+                <div className={`w-8 h-8 rounded-md ${classes.primaryBtn} flex items-center justify-center`}>
+                    <div className="w-4 h-4 bg-white/20 rounded"></div>
+                </div>
+                <div className="flex-1 space-y-1">
+                    <div className={`h-2 w-1/3 rounded ${classes.card.split(' ')[0]} brightness-90`}></div>
+                    <div className={`h-2 w-1/4 rounded ${classes.card.split(' ')[0]} brightness-90`}></div>
+                </div>
+            </div>
+            <div className={`flex-1 rounded-lg border p-2 ${classes.card}`}>
+                <div className={`text-xs font-bold ${classes.accent}`}>{label}</div>
+                <div className={`text-[10px] mt-1 ${classes.text} opacity-60`}>Lorem ipsum dolor sit amet.</div>
+            </div>
+        </div>
+        
+        <div className={`absolute inset-x-0 bottom-0 p-2 bg-black/50 backdrop-blur-sm text-center`}>
+            <span className="text-xs font-bold text-white uppercase">
+                {noTranslate ? label : t(label.includes('theme.') ? label : `theme.${label}`)}
+            </span>
+        </div>
+        
+        {active && (
+            <div className="absolute top-2 right-2 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center text-white shadow-lg">
+                <Check className="w-4 h-4" />
+            </div>
+        )}
+    </div>
+);
+
 const ThemeEditorModal: React.FC<{
     onClose: () => void;
     data: AppData;
@@ -78,6 +127,9 @@ const ThemeEditorModal: React.FC<{
     const [customAccent, setCustomAccent] = useState<string>(
         data.settings?.customTheme?.accent || 'c22' // Default to Emerald
     );
+    const [customBg, setCustomBg] = useState<string>(
+        data.settings?.customTheme?.customBg || ''
+    );
 
     // Typography State
     const [fontFamily, setFontFamily] = useState(data.settings?.typography?.fontFamily || 'Inter');
@@ -94,9 +146,6 @@ const ThemeEditorModal: React.FC<{
 
     const [fontSearch, setFontSearch] = useState('');
     const fontFileInput = useRef<HTMLInputElement>(null);
-
-    // Check dev mode
-    const isDev = data.settings?.dev === true;
 
     // Dynamically load font for preview when selected in dropdown
     useEffect(() => {
@@ -147,7 +196,7 @@ const ThemeEditorModal: React.FC<{
     };
 
     const handleSaveCustom = () => {
-        const config: CustomThemeConfig = { base: customBase, accent: customAccent };
+        const config: CustomThemeConfig = { base: customBase, accent: customAccent, customBg: customBg || undefined };
         setData(prev => ({ 
             ...prev, 
             settings: { 
@@ -213,7 +262,6 @@ const ThemeEditorModal: React.FC<{
                 await StorageService.saveFont(url, filename);
                 success = true;
             }
-            // Emojidex removed from download logic to avoid 404s
         } catch(e) {
             console.warn("Could not save font to server, using CDN/Cache", e);
         } finally {
@@ -245,39 +293,7 @@ const ThemeEditorModal: React.FC<{
         }
     };
 
-    const PreviewCard = ({ classes, label, active, onClick }: { classes: any, label: string, active: boolean, onClick?: () => void }) => (
-        <div className={`relative rounded-xl overflow-hidden border-2 transition-all cursor-pointer group ${active ? 'border-emerald-500 scale-[1.02] shadow-lg' : 'border-transparent hover:border-white/20'}`}
-             onClick={onClick || (() => mode === 'presets' ? handleSelectPreset(label as ThemeOption) : null)}
-        >
-            <div className={`h-32 p-3 ${classes.bg} flex flex-col gap-2`}>
-                <div className="flex gap-2">
-                    <div className={`w-8 h-8 rounded-md ${classes.primaryBtn} flex items-center justify-center`}>
-                        <div className="w-4 h-4 bg-white/20 rounded"></div>
-                    </div>
-                    <div className="flex-1 space-y-1">
-                        <div className={`h-2 w-1/3 rounded ${classes.card.split(' ')[0]} brightness-90`}></div>
-                        <div className={`h-2 w-1/4 rounded ${classes.card.split(' ')[0]} brightness-90`}></div>
-                    </div>
-                </div>
-                <div className={`flex-1 rounded-lg border p-2 ${classes.card}`}>
-                    <div className={`text-xs font-bold ${classes.accent}`}>{label}</div>
-                    <div className={`text-[10px] mt-1 ${classes.text} opacity-60`}>Lorem ipsum dolor sit amet.</div>
-                </div>
-            </div>
-            
-            <div className={`absolute inset-x-0 bottom-0 p-2 bg-black/50 backdrop-blur-sm text-center`}>
-                <span className="text-xs font-bold text-white uppercase">{t(label.includes('theme.') ? label : `theme.${label}`)}</span>
-            </div>
-            
-            {active && (
-                <div className="absolute top-2 right-2 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center text-white shadow-lg">
-                    <Check className="w-4 h-4" />
-                </div>
-            )}
-        </div>
-    );
-
-    const customPreviewClasses = generateCustomTheme(customBase, customAccent as any);
+    const customPreviewClasses = generateCustomTheme(customBase, customAccent as any, customBg || undefined);
 
     const filteredFonts = GOOGLE_FONTS.filter(f => f.toLowerCase().includes(fontSearch.toLowerCase()));
 
@@ -312,7 +328,8 @@ const ThemeEditorModal: React.FC<{
                     <button onClick={() => setMode('emoji')} className={`px-6 py-3 text-sm font-bold flex items-center justify-center gap-2 whitespace-nowrap shrink-0 ${mode === 'emoji' ? 'bg-white/5 text-indigo-500 border-b-2 border-indigo-500' : 'opacity-60'}`}>
                         <Smile className="w-4 h-4" /> {t('theme.emoji_tab')}
                     </button>
-                    {isDev && (
+                    
+                    {data.settings?.dev && (
                         <button onClick={() => setMode('secret')} className={`px-6 py-3 text-sm font-bold flex items-center justify-center gap-2 whitespace-nowrap shrink-0 ${mode === 'secret' ? 'bg-white/5 text-indigo-500 border-b-2 border-indigo-500' : 'opacity-60'}`}>
                             <Gift className="w-4 h-4 text-purple-500" /> {t('theme.secret_tab')}
                         </button>
@@ -322,14 +339,23 @@ const ThemeEditorModal: React.FC<{
                 <div className="p-6 overflow-y-auto bg-black/5 flex-1">
                     {mode === 'presets' && (
                         <div className="grid grid-cols-2 gap-4">
-                            <PreviewCard classes={THEMES.dark} label="dark" active={currentTheme === 'dark'} />
-                            <PreviewCard classes={THEMES.light} label="light" active={currentTheme === 'light'} />
-                            <PreviewCard classes={THEMES.lavender} label="lavender" active={currentTheme === 'lavender'} />
-                            <PreviewCard classes={THEMES.dark} label="system" active={currentTheme === 'system'} />
+                            <PreviewCard classes={THEMES.dark} label="dark" active={currentTheme === 'dark'} onClick={() => handleSelectPreset('dark')} t={t} />
+                            <PreviewCard classes={THEMES.light} label="light" active={currentTheme === 'light'} onClick={() => handleSelectPreset('light')} t={t} />
+                            <PreviewCard classes={THEMES.lavender} label="lavender" active={currentTheme === 'lavender'} onClick={() => handleSelectPreset('lavender')} t={t} />
+                            
+                            <PreviewCard classes={THEMES.nord} label="nord" active={currentTheme === 'nord'} onClick={() => handleSelectPreset('nord')} t={t} />
+                            <PreviewCard classes={THEMES.forest} label="forest" active={currentTheme === 'forest'} onClick={() => handleSelectPreset('forest')} t={t} />
+                            <PreviewCard classes={THEMES.ocean} label="ocean" active={currentTheme === 'ocean'} onClick={() => handleSelectPreset('ocean')} t={t} />
+                            <PreviewCard classes={THEMES.sunset} label="sunset" active={currentTheme === 'sunset'} onClick={() => handleSelectPreset('sunset')} t={t} />
+                            <PreviewCard classes={THEMES.coffee} label="coffee" active={currentTheme === 'coffee'} onClick={() => handleSelectPreset('coffee')} t={t} />
+                            <PreviewCard classes={THEMES.rose} label="rose" active={currentTheme === 'rose'} onClick={() => handleSelectPreset('rose')} t={t} />
+                            <PreviewCard classes={THEMES.cyberpunk} label="cyberpunk" active={currentTheme === 'cyberpunk'} onClick={() => handleSelectPreset('cyberpunk')} t={t} />
+                            
+                            <PreviewCard classes={THEMES.dark} label="system" active={currentTheme === 'system'} onClick={() => handleSelectPreset('system')} t={t} />
                         </div>
                     )}
 
-                    {mode === 'secret' && isDev && (
+                    {mode === 'secret' && data.settings?.dev && (
                         <div className="space-y-4">
                             <p className="text-sm opacity-70 mb-4">Ezek a témák automatikusan aktiválódnak az adott napokon. Kattints rájuk a manuális aktiváláshoz!</p>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -337,9 +363,11 @@ const ThemeEditorModal: React.FC<{
                                     <PreviewCard 
                                         key={holiday.id}
                                         classes={holiday.colors} 
-                                        label={`${holiday.emoji} ${holiday.name}`} 
+                                        label={`${holiday.emoji} ${holiday.name} (${holiday.getDisplayDate(new Date().getFullYear())})`}
                                         active={data.settings?.activeHoliday === holiday.id}
                                         onClick={() => handlePreviewSecret(holiday.id)}
+                                        noTranslate={true}
+                                        t={t}
                                     />
                                 ))}
                             </div>
@@ -350,7 +378,9 @@ const ThemeEditorModal: React.FC<{
                         <div className="space-y-8">
                             <div>
                                 <h4 className="text-xs font-bold uppercase mb-3 opacity-70">{t('theme.preview')}</h4>
-                                <PreviewCard classes={customPreviewClasses} label="custom" active={currentTheme === 'custom'} />
+                                <div className="p-4 rounded-xl border-2 border-white/10" style={{ backgroundColor: customBg || 'transparent' }}>
+                                    <PreviewCard classes={customPreviewClasses} label="custom" active={currentTheme === 'custom'} onClick={() => {}} t={t} />
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -383,6 +413,21 @@ const ThemeEditorModal: React.FC<{
                                             </button>
                                         ))}
                                     </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h4 className="text-xs font-bold uppercase mb-3 opacity-70">{t('theme.custom_bg')}</h4>
+                                <div className="flex gap-4 items-center">
+                                    <input 
+                                        type="color" 
+                                        value={customBg || '#000000'} 
+                                        onChange={(e) => setCustomBg(e.target.value)} 
+                                        className="h-10 w-20 rounded cursor-pointer"
+                                    />
+                                    <Button size="sm" variant="secondary" onClick={() => setCustomBg('')} themeClasses={themeClasses}>
+                                        <X className="w-4 h-4" /> Törlés (Alapértelmezett)
+                                    </Button>
                                 </div>
                             </div>
 
@@ -466,16 +511,9 @@ const ThemeEditorModal: React.FC<{
                         <div className="space-y-6">
                             <p className="text-sm opacity-80 mb-4">{t('theme.weather_desc')}</p>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <WeatherPreview pack="outline" currentPack={weatherPack} onSelect={setWeatherPack} t={t} />
-                                <WeatherPreview pack="filled" currentPack={weatherPack} onSelect={setWeatherPack} t={t} />
-                                <WeatherPreview pack="color" currentPack={weatherPack} onSelect={setWeatherPack} t={t} />
-                                <WeatherPreview pack="emoji" currentPack={weatherPack} onSelect={setWeatherPack} t={t} />
-                                <WeatherPreview pack="ascii" currentPack={weatherPack} onSelect={setWeatherPack} t={t} />
-                                <WeatherPreview pack="thin" currentPack={weatherPack} onSelect={setWeatherPack} t={t} />
-                                <WeatherPreview pack="bold" currentPack={weatherPack} onSelect={setWeatherPack} t={t} />
-                                <WeatherPreview pack="cartoon" currentPack={weatherPack} onSelect={setWeatherPack} t={t} />
-                                <WeatherPreview pack="mono-duotone" currentPack={weatherPack} onSelect={setWeatherPack} t={t} />
-                                <WeatherPreview pack="neon" currentPack={weatherPack} onSelect={setWeatherPack} t={t} />
+                                {WEATHER_PACKS.map(pack => (
+                                    <WeatherPreview key={pack} pack={pack} currentPack={weatherPack} onSelect={setWeatherPack} t={t} />
+                                ))}
                             </div>
                             <div className="pt-4">
                                 <Button className="w-full" onClick={handleSaveWeather} themeClasses={themeClasses}>

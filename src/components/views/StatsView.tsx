@@ -63,10 +63,14 @@ const StatsView: React.FC<StatsViewProps> = ({ entries, themeClasses, t, savedLa
 
             // Correlations: Weather
             if (e.weather) {
-                const mainCond = getWeatherCategory(e.weather);
-                if (mainCond !== 'Other') {
-                    if (!weatherMoods[mainCond]) weatherMoods[mainCond] = {};
-                    weatherMoods[mainCond][e.mood] = (weatherMoods[mainCond][e.mood] || 0) + 1;
+                // Use condition (code or text) as key for grouping
+                // If it is a code (wmo_X), we group by that code
+                // If it is legacy text ('Clear sky'), we group by that
+                // To keep it clean, we group by what is stored
+                const conditionKey = e.weather.condition;
+                if (conditionKey) {
+                    if (!weatherMoods[conditionKey]) weatherMoods[conditionKey] = {};
+                    weatherMoods[conditionKey][e.mood] = (weatherMoods[conditionKey][e.mood] || 0) + 1;
                 }
             }
 
@@ -111,7 +115,12 @@ const StatsView: React.FC<StatsViewProps> = ({ entries, themeClasses, t, savedLa
 
     const days = ['Vasárnap', 'Hétfő', 'Kedd', 'Szerda', 'Csütörtök', 'Péntek', 'Szombat'];
     
+    // Updated translation helper
     const translateWeather = (cond: string) => {
+        if (cond.startsWith('wmo_')) {
+            return t(`weather.${cond}`);
+        }
+        // Fallback for legacy static text
         switch(cond) {
             case 'Clear': return 'Napos';
             case 'Clouds': return 'Felhős';
@@ -178,10 +187,16 @@ const StatsView: React.FC<StatsViewProps> = ({ entries, themeClasses, t, savedLa
                     {Object.keys(weatherMoods).length === 0 ? <p className="opacity-50 text-sm text-center">{t('stats.no_data')}</p> : 
                         Object.entries(weatherMoods).map(([cond, moods]) => {
                             const { mood, percent } = getTopMood(moods);
+                            // Ensure iconCode is set to the condition code so renderer can pick it up
+                            let iconCode = '';
+                            if (cond.startsWith('wmo_')) iconCode = cond;
+                            else if (!isNaN(parseInt(cond))) iconCode = `wmo_${cond}`; // handle potential bare numbers
+                            else iconCode = cond; // Pass legacy text if no WMO
+                            
                             return (
                                 <div key={cond} className="flex items-center justify-between p-2 rounded bg-black/5 border border-white/5">
                                     <div className="flex items-center gap-3">
-                                        <WeatherRenderer data={{ condition: cond, temp:0, location:'' }} pack={weatherPack} className="w-5 h-5" />
+                                        <WeatherRenderer data={{ condition: cond, temp:0, location:'', icon: iconCode }} pack={weatherPack} className="w-5 h-5" />
                                         <span className="text-sm font-bold">{translateWeather(cond)}</span>
                                     </div>
                                     <div className="flex items-center gap-2">

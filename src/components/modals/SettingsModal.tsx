@@ -2,19 +2,23 @@
 import React, { useState, useEffect } from 'react';
 import { AppData, ThemeOption } from '../../types';
 import { Button, Card } from '../ui';
-import { INITIAL_DATA } from '../../constants';
 import { APP_VERSION } from '../../changelog';
 import * as StorageService from '../../services/storage';
+
+// Direct Data Imports for Reset/Restore Logic
+import { DEFAULT_QUESTIONS } from '../../data/questions';
+import { DEFAULT_HABITS } from '../../data/habits';
+import { SAMPLE_ENTRIES } from '../../data/samples';
 
 // Tabs
 import SettingsViewsTab from '../settings/SettingsViewsTab';
 import SettingsPublicTab from '../settings/SettingsPublicTab';
 import SettingsAccountTab from '../settings/SettingsAccountTab';
 import SettingsDataTab from '../settings/SettingsDataTab';
-import SettingsCloudTab from '../settings/SettingsCloudTab';
+import SettingsLayoutTab from '../settings/SettingsCloudTab'; 
 import SettingsAboutTab from '../settings/SettingsAboutTab';
 
-type Tab = 'views' | 'public' | 'account' | 'cloud' | 'about' | 'data';
+type Tab = 'views' | 'public' | 'account' | 'layout' | 'about' | 'data';
 
 const SettingsModal: React.FC<{ 
     onClose: () => void, 
@@ -104,7 +108,8 @@ const SettingsModal: React.FC<{
 
     const handleDeleteSampleData = () => {
         if (confirm(t('common.yes') + "?")) {
-            const sampleIds = INITIAL_DATA.entries.map(e => e.id);
+            // Use the directly imported SAMPLE_ENTRIES to find IDs to delete
+            const sampleIds = SAMPLE_ENTRIES.map(e => e.id);
             setData(prev => ({
                 ...prev,
                 entries: prev.entries.filter(e => !sampleIds.includes(e.id))
@@ -116,10 +121,29 @@ const SettingsModal: React.FC<{
     const handleResetDiary = async () => {
         if (confirm(t('settings.reset_confirm'))) {
             try {
-                await StorageService.resetDiary();
-                setData(prev => ({ ...prev, entries: [] })); // Clear locally immediately
+                // Try to reset server side (delete files) if possible, but ignore error if offline/local
+                try {
+                    await StorageService.resetDiary();
+                } catch(e) {
+                    console.warn("Server reset skipped or failed (local mode?)");
+                }
+
+                // Restore default data from source files
+                const freshData: AppData = {
+                    questions: DEFAULT_QUESTIONS,
+                    habits: DEFAULT_HABITS,
+                    entries: SAMPLE_ENTRIES,
+                    settings: localSettings // Preserve current settings
+                };
+
+                setData(freshData);
+                
+                // Force immediate local save to persist the reset state
+                StorageService.saveData(freshData);
+                
                 alert(t('common.success'));
             } catch(e) {
+                console.error(e);
                 alert(t('common.error'));
             }
         }
@@ -162,7 +186,7 @@ const SettingsModal: React.FC<{
                     <button onClick={() => setActiveTab('account')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'account' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>{t('settings.tabs.account')}</button>
                     <button onClick={() => setActiveTab('views')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'views' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>{t('settings.tabs.views')}</button>
                     <button onClick={() => setActiveTab('public')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'public' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>{t('settings.tabs.public')}</button>
-                    <button onClick={() => setActiveTab('cloud')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'cloud' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>Felhő</button>
+                    <button onClick={() => setActiveTab('layout')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'layout' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>{t('settings.tabs.layout')}</button>
                     <button onClick={() => setActiveTab('data')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'data' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>{t('settings.tabs.data')}</button>
                     <button onClick={() => setActiveTab('about')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'about' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>{t('settings.tabs.about')}</button>
                 </div>
@@ -196,11 +220,12 @@ const SettingsModal: React.FC<{
                         />
                     )}
 
-                    {activeTab === 'cloud' && (
-                        <SettingsCloudTab 
+                    {activeTab === 'layout' && (
+                        <SettingsLayoutTab 
                             localSettings={localSettings} 
                             setLocalSettings={setLocalSettings} 
                             themeClasses={themeClasses} 
+                            t={t} 
                         />
                     )}
 
@@ -224,7 +249,9 @@ const SettingsModal: React.FC<{
                             t={t} 
                             isCheckingUpdate={isCheckingUpdate} 
                             updateInfo={updateInfo} 
-                            cardBg={cardBg} 
+                            cardBg={cardBg}
+                            isDevMode={localSettings.dev}
+                            onToggleDevMode={(enabled) => setLocalSettings(prev => ({ ...prev, dev: enabled }))}
                         />
                     )}
                 </div>

@@ -164,6 +164,7 @@ const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
         };
         onSaveLocation(newLoc);
         setLocationName("");
+        // Removed alert window as requested
     };
 
     const handleSelect = () => {

@@ -30,16 +30,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&family=Lobster&display=swap" rel="stylesheet">
     
     <!-- Emoji Fonts -->
-    <!-- Google Noto Color Emoji needs crossorigin to avoid CORS issues in some contexts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&family=Noto+Emoji:wght@300..700&display=swap" rel="stylesheet" crossorigin="anonymous">
     <style>
-      /* Stable OpenMoji Version */
       @font-face {
         font-family: 'OpenMoji';
         src: url('https://cdn.jsdelivr.net/npm/@openmoji/openmoji@14.0.0/font/OpenMoji-Color.woff2') format('woff2');
         font-display: swap;
       }
-      /* Emojidex removed due to instability/404s. System/Noto fallback will be used. */
     </style>
 
 <script type="importmap">
@@ -83,7 +80,6 @@
 
     <!-- Client-Side Module Loader & System Check -->
     <script>
-      // Global Error Handler for initial boot phase
       window.onerror = function(msg, url, line, col, error) {
          const root = document.getElementById('root');
          if (root && !root.innerHTML.includes('Rendszerhiba')) {
@@ -99,52 +95,33 @@
       const modules = {};
       
       const CRITICAL_FILES = [
-        // Root / Common
         './metadata.json',
         './package.json',
         './style.css',
-        
-        // Source files (using src/ prefix to match new structure)
         './src/index.tsx',
         './src/App.tsx',
         './src/types.ts',
         './src/constants.ts',
         './src/changelog.ts',
-        
-        // Data Files (New)
         './src/data/questions.ts',
         './src/data/habits.ts',
         './src/data/samples.ts',
-        
-        // Languages
         './src/langs/hu.ts',
         './src/langs/en.ts',
         './src/services/i18n.ts',
-
-        // Services
         './src/services/storage.ts',
         './src/services/updater.ts',
         './src/services/gemini.ts',
-        
-        // Constants
         './src/constants/theme.ts',
         './src/constants/fonts.ts',
         './src/constants/serverTemplates.ts',
-        
-        // UI
         './src/components/ui/index.tsx',
         './src/components/ui/RichTextEditor.tsx',
         './src/components/ui/WeatherRenderer.tsx',
         './src/components/ui/EmojiRenderer.tsx',
-        
-        // Layout
         './src/components/layout/StatusBar.tsx',
         './src/components/layout/Navbar.tsx',
-        
-        // Forms
         './src/components/forms/EntryEditor.tsx',
-
-        // Views
         './src/components/views/AtlasView.tsx',
         './src/components/views/GalleryView.tsx',
         './src/components/views/CalendarView.tsx',
@@ -155,8 +132,6 @@
         './src/components/views/TagManager.tsx',
         './src/components/views/StreakView.tsx',
         './src/components/views/QuoteWidget.tsx',
-        
-        // Modals
         './src/components/modals/ExportModal.tsx',
         './src/components/modals/SettingsModal.tsx',
         './src/components/modals/DeployModal.tsx',
@@ -165,8 +140,6 @@
         './src/components/modals/TemplateModal.tsx',
         './src/components/modals/LocationPickerModal.tsx',
         './src/components/modals/UpdateModal.tsx',
-
-        // Settings Tabs (New)
         './src/components/settings/SettingsViewsTab.tsx',
         './src/components/settings/SettingsPublicTab.tsx',
         './src/components/settings/SettingsAccountTab.tsx',
@@ -207,7 +180,7 @@
 
       function resolvePath(base, relative) {
           const stack = base.split('/');
-          stack.pop(); // remove current filename
+          stack.pop(); 
           
           const parts = relative.split('/');
           
@@ -226,35 +199,33 @@
 
       function loadModule(key) {
           const mod = modules[key];
-          if (!mod.loaded) {
+          if (mod && !mod.loaded) {
               const processMock = { env: { API_KEY: '' } }; 
-              // Bind customRequire with key to allow relative resolution
               const boundRequire = (id) => customRequire(id, key);
               mod.fn(boundRequire, mod.exports, mod, processMock);
               mod.loaded = true;
           }
-          return mod.exports;
+          return mod ? mod.exports : null;
       }
 
       function customRequire(id, parent) {
         // 1. External Globals
         if (id === 'react') return window.React;
         if (id === 'react-dom/client') return window.ReactDOM;
-        if (id === 'react-dom') return window.ReactDOM; // Added for createPortal support
+        if (id === 'react-dom') return window.ReactDOM;
         if (id === 'lucide-react') return window.lucide;
 
         // 2. Resolve internal path
         let resolvedIds = [];
         
-        // A) Relative import
         if (id.startsWith('./') || id.startsWith('../')) {
              if (parent) {
                  resolvedIds.push(resolvePath(parent, id));
              } else {
-                 resolvedIds.push(id); // Fallback if no parent
+                 resolvedIds.push(id); 
              }
         } else {
-             // B) Absolute/Top-level import
+             // Absolute imports handled as relative to root in this flat structure
              resolvedIds.push(id);
              resolvedIds.push('src/' + id);
              resolvedIds.push('./src/' + id);
@@ -262,18 +233,25 @@
 
         const candidates = [];
         for (const base of resolvedIds) {
+            // Try as-is
             candidates.push(base);
-            candidates.push(base + '.ts');
-            candidates.push(base + '.tsx');
-            candidates.push(base + '/index.tsx');
             
-            // Try with ./ prefix if not present (for modules registered with ./)
+            // Try extensions
+            if (!base.endsWith('.ts') && !base.endsWith('.tsx')) {
+                candidates.push(base + '.ts');
+                candidates.push(base + '.tsx');
+                candidates.push(base + '/index.tsx');
+            }
+            
+            // Ensure './' prefix if missing
             if (!base.startsWith('./')) {
                 const dotted = './' + base;
                 candidates.push(dotted);
-                candidates.push(dotted + '.ts');
-                candidates.push(dotted + '.tsx');
-                candidates.push(dotted + '/index.tsx');
+                if (!dotted.endsWith('.ts') && !dotted.endsWith('.tsx')) {
+                    candidates.push(dotted + '.ts');
+                    candidates.push(dotted + '.tsx');
+                    candidates.push(dotted + '/index.tsx');
+                }
             }
         }
 
@@ -281,50 +259,11 @@
             if (modules[candidate]) return loadModule(candidate);
         }
         
-        // console.error(`Module resolution failed for: ${id} from ${parent}`);
         throw new Error(`Modul nem található: ${id}`);
-      }
-
-      function renderErrorScreen(missingFiles) {
-          const root = document.getElementById('root');
-          if (!root) return;
-          
-          root.innerHTML = `
-            <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background-color: #09090b; color: #e4e4e7; font-family: sans-serif; padding: 20px;">
-                <div style="max-width: 500px; width: 100%; background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
-                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; color: #ef4444;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                        <h1 style="font-size: 1.5rem; font-weight: bold; margin-0;">Rendszerhiba</h1>
-                    </div>
-                    
-                    <p style="margin-bottom: 16px; line-height: 1.5; color: #a1a1aa;">Az alkalmazás indítása sikertelen. Néhány fájl nem tölthető be.</p>
-                    
-                    ${missingFiles.length > 0 ? `
-                    <div style="background: #27272a; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
-                        <h3 style="font-size: 0.875rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; color: #fbbf24;">Hiányzó modulok:</h3>
-                        <ul style="list-style: none; padding: 0; margin: 0; font-family: monospace; font-size: 0.8rem; max-height: 150px; overflow-y: auto;">
-                            ${missingFiles.map(f => `<li style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #3f3f46;">
-                                <span>${f}</span>
-                                <span style="color: #ef4444;">404</span>
-                            </li>`).join('')}
-                        </ul>
-                    </div>
-                    ` : ''}
-
-                    <div style="margin-bottom: 24px;">
-                        <button onclick="location.reload()" style="width: 100%; background: #059669; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: background 0.2s;">
-                            Újratöltés
-                        </button>
-                    </div>
-                </div>
-            </div>
-          `;
       }
 
       async function boot() {
         const missing = [];
-        
-        // Initialize Global Source Cache for DeployModal
         window.__SOURCE_CACHE__ = {};
         const loadedCode = window.__SOURCE_CACHE__;
 
@@ -344,19 +283,17 @@
         for (const path of CRITICAL_FILES) {
             updateStatus("Betöltés:", path);
             try {
-                // Try fetching path as is
                 let res = await fetchWithTimeout(path);
                 
-                // Fallback for flat structure if src/ path fails
+                // Fallback for flat structure or different base paths
                 if (!res.ok && path.includes('src/')) {
                     const flatPath = path.replace('src/', '');
-                    // console.log(`Fallback fetch for ${path} -> ${flatPath}`);
                     const resFlat = await fetchWithTimeout(flatPath);
                     if (resFlat.ok) res = resFlat;
                 }
                 
                 if (!res.ok) {
-                     // Try fallback for non-src paths that might be in src/
+                     // Try src prefix if missing
                      if (!path.includes('src/') && !path.endsWith('.css') && !path.endsWith('.json')) {
                          const srcPath = './src/' + path.replace(/^\.\//, '');
                          const resSrc = await fetchWithTimeout(srcPath);
@@ -377,7 +314,6 @@
                 loadedCode[path] = text;
             } catch (e) {
                 console.warn(`Failed to load ${path}:`, e);
-                // Don't mark styles or metadata as critical failure
                 if (!path.endsWith('.css') && !path.endsWith('metadata.json') && !path.endsWith('package.json')) {
                     missing.push(path);
                 }
@@ -385,7 +321,9 @@
         }
 
         if (missing.length > 0) {
-            renderErrorScreen(missing);
+            // Render error screen defined above
+            const root = document.getElementById('root');
+            if(root) root.innerHTML = `<h1>Hiba: Hiányzó fájlok</h1><pre>${missing.join('\n')}</pre>`;
         } else {
             try {
                 updateStatus("Fájlok feldolgozása...");
@@ -393,19 +331,10 @@
                     if (path.endsWith('.ts') || path.endsWith('.tsx')) {
                         registerModule(path, loadedCode[path]);
                         
-                        // Fix for mixed relative imports (root vs src)
-                        // If we loaded something like ./src/types.ts, we alias it to ./types.ts as well
+                        // Register alias for types.ts to be safe
                         if (path.includes('types.ts')) {
                              if (!modules['./types.ts']) registerModule('./types.ts', loadedCode[path]);
                              if (!modules['./src/types.ts']) registerModule('./src/types.ts', loadedCode[path]);
-                        }
-                        if (path.includes('constants.ts')) {
-                             if (!modules['./constants.ts']) registerModule('./constants.ts', loadedCode[path]);
-                             if (!modules['./src/constants.ts']) registerModule('./src/constants.ts', loadedCode[path]);
-                        }
-                        if (path.includes('i18n.ts')) {
-                             if (!modules['./services/i18n.ts']) registerModule('./services/i18n.ts', loadedCode[path]);
-                             if (!modules['./src/services/i18n.ts']) registerModule('./src/services/i18n.ts', loadedCode[path]);
                         }
                     }
                 }
@@ -414,8 +343,8 @@
                 
                 // Auto-load languages
                 Object.keys(modules).forEach(key => {
-                    if ((key.includes('/langs/') || key.includes('/langs\\')) && !key.endsWith('index.tsx') && !key.endsWith('index.ts')) {
-                        try { loadModule(key); } catch(e) { console.warn("Nyelvi fájl automatikus betöltése sikertelen: " + key, e); }
+                    if ((key.includes('/langs/') || key.includes('/langs\\')) && !key.endsWith('index.tsx')) {
+                        try { loadModule(key); } catch(e) {}
                     }
                 });
                 
@@ -423,29 +352,20 @@
                      throw new Error("React könyvtár nem töltődött be.");
                 }
 
-                // Initial require - handle ./src/index.tsx correctly
-                // We use a dummy parent '.' for strict relative resolution if needed, 
-                // but absolute/fuzzy fallback in customRequire will handle it anyway.
                 try {
                     customRequire('./src/index.tsx');
                 } catch(e) {
                     try {
                         customRequire('./index.tsx');
                     } catch(e2) {
-                        // One last try for common misconfiguration
                         console.error(e, e2);
-                        throw new Error(`Modul nem található: ./index.tsx (vagy src/index.tsx)`);
+                        throw new Error(`Modul nem található: ./index.tsx`);
                     }
                 }
             } catch (compileError) {
                 console.error(compileError);
                 const root = document.getElementById('root');
-                root.innerHTML = `<div style="padding: 20px; color: #ef4444; font-family: sans-serif; background:#09090b; min-height:100vh;">
-                    <h1>Kritikus Hiba Indításkor</h1>
-                    <p style="margin-bottom:15px">${compileError.message}</p>
-                    <pre style="background: #18181b; padding: 15px; border-radius: 8px; overflow: auto; font-size: 0.8em; color: #a1a1aa;">${compileError.stack}</pre>
-                    <button onclick="location.reload()" style="margin-top:20px; background: #27272a; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">Újratöltés</button>
-                </div>`;
+                root.innerHTML = `<pre style="color:red; padding:20px;">${compileError.stack}</pre>`;
             }
         }
       }
@@ -453,7 +373,6 @@
       window.onload = boot;
     </script>
     
-    <!-- Load React Globals -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script> 
@@ -462,25 +381,16 @@
         window.React = React;
         window.ReactDOM = ReactDOM;
         
-        // Capture the real lucide library before we overwrite the global for the proxy
         const realLucide = window.lucide;
 
         window.lucide = new Proxy({}, {
             get: (target, prop) => {
-                // Check if the icon exists in the library
                 if (realLucide && realLucide.icons && realLucide.icons[prop]) {
                     return (props) => {
                          try {
-                            // Extract common props
                             const { color, size, strokeWidth, className, ...rest } = props || {};
-                            
-                            // Map React props to SVG attributes
-                            // Lucide default attrs are usually: width=24, height=24, fill=none, stroke=currentColor, stroke-width=2, stroke-linecap=round, stroke-linejoin=round
-                            
-                            // Create SVG element using vanilla lucide
                             const svgElement = realLucide.createElement(realLucide.icons[prop]);
                             
-                            // Apply overrides
                             if (color) svgElement.setAttribute('stroke', color);
                             if (size) {
                                 svgElement.setAttribute('width', size);
@@ -489,7 +399,6 @@
                             if (strokeWidth) svgElement.setAttribute('stroke-width', strokeWidth);
                             if (className) svgElement.setAttribute('class', `lucide lucide-${prop} ${className}`);
                             
-                            // Apply rest props
                             Object.keys(rest).forEach(key => {
                                 svgElement.setAttribute(key, rest[key]);
                             });
@@ -499,12 +408,10 @@
                                 dangerouslySetInnerHTML: { __html: svgElement.outerHTML }
                             });
                          } catch (e) {
-                             console.error("Icon render error for", prop, e);
                              return React.createElement('span', {}, prop);
                          }
                     };
                 }
-                // Fallback
                 return () => React.createElement('span', {}, prop);
             }
         });

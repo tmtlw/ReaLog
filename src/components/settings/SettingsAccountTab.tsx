@@ -43,12 +43,6 @@ const SettingsAccountTab: React.FC<SettingsAccountTabProps> = ({ localSettings, 
                 <label className={`text-xs uppercase font-bold block mb-1 ${themeClasses.subtext}`}>{t('settings.display_name')}</label>
                 <Input themeClasses={themeClasses} value={localSettings.userName || ''} onChange={(e: any) => setLocalSettings(prev => ({ ...prev, userName: e.target.value }))} placeholder={t('settings.account_hint_name')} />
             </div>
-
-            {/* Weather API Key */}
-            <div>
-                <label className={`text-xs uppercase font-bold block mb-1 ${themeClasses.subtext}`}>{t('settings.weather_api')}</label>
-                <Input themeClasses={themeClasses} value={localSettings.openWeatherMapKey || ''} onChange={(e: any) => setLocalSettings(prev => ({ ...prev, openWeatherMapKey: e.target.value }))} placeholder="api_key_..." />
-            </div>
             
             {/* Images */}
             <div className="grid grid-cols-2 gap-4">

@@ -10,9 +10,9 @@ const LEGACY_STORAGE_KEY = 'grind_diary_data_v1';
 const KEY_ENTRIES = 'grind_entries';
 const KEY_SETTINGS = 'grind_settings';
 const KEY_QUESTIONS = 'grind_questions';
-const KEY_HABITS = 'grind_habits'; // New key
+const KEY_HABITS = 'grind_habits'; 
 const KEY_AUTH_SESSION = 'grind_auth_session';
-const KEY_IS_DIRTY = 'grind_is_dirty'; // Tracks if local changes need push
+const KEY_IS_DIRTY = 'grind_is_dirty';
 
 // --- Helper: Dynamic API URL ---
 export const getApiUrl = (endpoint: string): string => {
@@ -71,12 +71,15 @@ export const loadData = (): AppData => {
     const rawHabits = localStorage.getItem(KEY_HABITS);
 
     if (rawEntries || rawSettings) {
-        return {
+        const habits = rawHabits ? JSON.parse(rawHabits) : [];
+        const data: AppData = {
             entries: rawEntries ? JSON.parse(rawEntries) : [],
             settings: rawSettings ? JSON.parse(rawSettings) : {},
             questions: rawQuestions ? JSON.parse(rawQuestions) : INITIAL_DATA.questions,
-            habits: rawHabits ? JSON.parse(rawHabits) : INITIAL_DATA.habits
+            // Fallback to default habits if array is empty or undefined
+            habits: habits.length > 0 ? habits : INITIAL_DATA.habits
         };
+        return data;
     }
 
     // 2. Migration: Check for legacy combined format
@@ -84,17 +87,18 @@ export const loadData = (): AppData => {
     if (rawLegacy) {
         console.log("Migrating legacy data to separated format...");
         const parsed = JSON.parse(rawLegacy);
+        const migrated = parsed;
         
         // Save to new keys
-        localStorage.setItem(KEY_ENTRIES, JSON.stringify(parsed.entries || []));
-        localStorage.setItem(KEY_SETTINGS, JSON.stringify(parsed.settings || {}));
-        localStorage.setItem(KEY_QUESTIONS, JSON.stringify(parsed.questions || INITIAL_DATA.questions));
-        localStorage.setItem(KEY_HABITS, JSON.stringify(parsed.habits || INITIAL_DATA.habits));
+        localStorage.setItem(KEY_ENTRIES, JSON.stringify(migrated.entries || []));
+        localStorage.setItem(KEY_SETTINGS, JSON.stringify(migrated.settings || {}));
+        localStorage.setItem(KEY_QUESTIONS, JSON.stringify(migrated.questions || INITIAL_DATA.questions));
+        localStorage.setItem(KEY_HABITS, JSON.stringify(migrated.habits || INITIAL_DATA.habits));
         
         // Return parsed data
-        if (!parsed.settings) parsed.settings = {};
-        if (!parsed.habits) parsed.habits = INITIAL_DATA.habits;
-        return parsed;
+        if (!migrated.settings) migrated.settings = {};
+        if (!migrated.habits || migrated.habits.length === 0) migrated.habits = INITIAL_DATA.habits;
+        return migrated;
     }
 
     // 3. Fallback to initial
@@ -113,7 +117,6 @@ export const saveData = (data: AppData): void => {
     localStorage.setItem(KEY_HABITS, JSON.stringify(data.habits || []));
     
     // Flag as dirty (needs sync) by default when saving locally
-    // If connected to server, serverSave will be called and potentially succeed
     localStorage.setItem(KEY_IS_DIRTY, 'true');
 
     // Optional: Clean up legacy key to save space
@@ -159,7 +162,6 @@ export interface ServerStatusResult {
 }
 
 export const checkServerStatus = async (): Promise<ServerStatusResult> => {
-    // Add timestamp to prevent caching of status check
     const url = `${getApiUrl('status')}?t=${Date.now()}`;
     try {
         const res = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } });
@@ -223,7 +225,6 @@ export const serverLoad = async (): Promise<AppData | null> => {
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
-        // Allow empty data structures, just ensure it's an object
         if (json && typeof json === 'object') {
              setDirty(false); // Clean state after fresh load
              return json as AppData;
@@ -254,7 +255,6 @@ export const serverSave = async (data: AppData): Promise<any> => {
             throw new Error("Server save failed");
         }
         
-        // Attempt to parse JSON to look for messages/logs, otherwise return null
         try {
             const result = await res.json();
             setDirty(false); // Sync success
@@ -268,7 +268,6 @@ export const serverSave = async (data: AppData): Promise<any> => {
     }
 };
 
-// NEW: Backup Features
 export const getBackups = async (): Promise<any[]> => {
     const url = `${getApiUrl('data')}?action=list_backups&t=${Date.now()}`;
     const res = await fetch(url);
@@ -419,11 +418,11 @@ export const cloudLoad = async (config: any): Promise<AppData | null> => {
     const json = await response.json();
     
     // Check for various JSONBin structures or flat export
-    if (json.record && (json.record.entries || json.record.questions || json.record.habits)) {
+    if (json.record) {
         return json.record as AppData;
     }
     
-    if (json.entries || json.questions || json.habits) {
+    if (json.entries) {
         return json as AppData;
     }
     
@@ -465,8 +464,7 @@ export const cloudSave = async (data: AppData, config: any): Promise<void> => {
     }
 };
 
-// --- Import/Export ---
-
+// ... (Rest of export logic remains same)
 export const importFromJson = (file: File): Promise<AppData> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -695,18 +693,15 @@ export const exportData = async (
       }
       return;
   }
-
-  // ... (Other formats: TXT, HTML, WXR, PDF/EPUB handled by existing logic or placeholder) ...
 };
 
-// --- Github Update Check ---
+// ... checkGithubVersion remains same
 export const checkGithubVersion = async (currentVersion: string) => {
     if (!GITHUB_CONFIG.ENABLED || !GITHUB_CONFIG.OWNER || !GITHUB_CONFIG.REPO) {
         return null;
     }
 
     try {
-        // Fetch package.json from raw
         const packageUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.OWNER}/${GITHUB_CONFIG.REPO}/${GITHUB_CONFIG.BRANCH}/package.json`;
         const res = await fetch(packageUrl);
         
@@ -720,14 +715,12 @@ export const checkGithubVersion = async (currentVersion: string) => {
         const remoteVersion = pkg.version;
 
         if (remoteVersion !== currentVersion) {
-            // Fetch changelog to show what changed
             const changelogUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.OWNER}/${GITHUB_CONFIG.REPO}/${GITHUB_CONFIG.BRANCH}/src/changelog.ts`;
             const clRes = await fetch(changelogUrl);
             let changes: string[] = [];
             
             if (clRes.ok) {
                 const clText = await clRes.text();
-                // Simple regex to extract changes array for the specific version
                 const versionBlock = clText.split(`version: "${remoteVersion}"`)[1];
                 if (versionBlock) {
                     const changesBlock = versionBlock.split('changes: [')[1];

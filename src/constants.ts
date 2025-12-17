@@ -1,5 +1,8 @@
 
-import { Category, Question, AppData, Entry, Habit } from './types';
+import { Category, AppData } from './types';
+import { DEFAULT_QUESTIONS } from './data/questions';
+import { DEFAULT_HABITS } from './data/habits';
+import { SAMPLE_ENTRIES } from './data/samples';
 
 export const SUB_CATEGORIES = [
     'general', 'health', 'friends', 'business', 'finance', 'family', 'personal', 'goals', 'dreams', 'achieved'
@@ -13,22 +16,8 @@ export const GITHUB_CONFIG = {
     BRANCH: 'main'
 };
 
-export const DEFAULT_HABITS: Habit[] = [
-    { id: 'h_1', title: 'Vízivás (pohár)', type: 'value', target: 8, unit: 'pohár', category: Category.DAILY, isActive: true },
-    { id: 'h_2', title: 'Olvasás', type: 'boolean', category: Category.DAILY, isActive: true },
-    { id: 'h_3', title: 'Edzés', type: 'boolean', category: Category.DAILY, isActive: true },
-    { id: 'h_4', title: 'Heti tervezés', type: 'boolean', category: Category.WEEKLY, isActive: true },
-];
-
-export const DEFAULT_QUESTIONS: Question[] = [
-  // ... (Keep existing questions, truncated for brevity in this response, assume FULL LIST is here as in previous file content) ...
-  {"id":"q_d_1","text":"Mi volt a mai legfontosabb győzelem?","category":Category.DAILY,"isActive":true},
-  {"id":"q_d_2","text":"Miben fejlődtem ma 1%-ot?","category":Category.DAILY,"isActive":true},
-  {"id":"q_d_3","text":"Mi akadályozott ma?","category":Category.DAILY,"isActive":true},
-  // ... (Assuming all other questions remain)
-];
-
-export const SAMPLE_ENTRIES: Entry[] = [];
+// Re-export for compatibility
+export { DEFAULT_QUESTIONS, DEFAULT_HABITS, SAMPLE_ENTRIES };
 
 export const INITIAL_DATA: AppData = {
   questions: DEFAULT_QUESTIONS,
@@ -42,7 +31,9 @@ export const INITIAL_DATA: AppData = {
         [Category.YEARLY]: { viewMode: 'grid', includeDaily: false, includeWeekly: false, includeMonthly: false },
     },
     enableHabits: true,
-    dev: true 
+    dev: true,
+    entryModalLayout: ['header', 'tags', 'content', 'map', 'habits', 'gallery'],
+    entryMapSize: 'medium'
   }
 };
 

@@ -46,6 +46,36 @@ const en = {
         dreams: 'Plans & Dreams',
         achieved: 'Achieved Goals'
     },
+    weather: {
+        wmo_0: 'Clear sky',
+        wmo_1: 'Mainly clear',
+        wmo_2: 'Partly cloudy',
+        wmo_3: 'Overcast',
+        wmo_45: 'Fog',
+        wmo_48: 'Depositing rime fog',
+        wmo_51: 'Drizzle: Light',
+        wmo_53: 'Drizzle: Moderate',
+        wmo_55: 'Drizzle: Dense',
+        wmo_56: 'Freezing Drizzle: Light',
+        wmo_57: 'Freezing Drizzle: Dense',
+        wmo_61: 'Rain: Slight',
+        wmo_63: 'Rain: Moderate',
+        wmo_65: 'Rain: Heavy',
+        wmo_66: 'Freezing Rain: Light',
+        wmo_67: 'Freezing Rain: Heavy',
+        wmo_71: 'Snow fall: Slight',
+        wmo_73: 'Snow fall: Moderate',
+        wmo_75: 'Snow fall: Heavy',
+        wmo_77: 'Snow grains',
+        wmo_80: 'Rain showers: Slight',
+        wmo_81: 'Rain showers: Moderate',
+        wmo_82: 'Rain showers: Violent',
+        wmo_85: 'Snow showers: Slight',
+        wmo_86: 'Snow showers: Heavy',
+        wmo_95: 'Thunderstorm',
+        wmo_96: 'Thunderstorm with slight hail',
+        wmo_99: 'Thunderstorm with heavy hail'
+    },
     nav: {
         map: 'Map',
         gallery: 'Gallery',
@@ -122,9 +152,9 @@ const en = {
         weather_color: 'Colorful',
         weather_emoji: 'Emoji',
         weather_ascii: 'ASCII (Retro)',
-        weather_thin: 'Vékony',
-        weather_bold: 'Vastag',
-        weather_cartoon: 'Rajzfilm',
+        weather_thin: 'Thin',
+        weather_bold: 'Bold',
+        weather_cartoon: 'Cartoon',
         weather_mono_duotone: 'Mono Duotone',
         weather_neon: 'Neon',
         emoji_noto: 'Google Noto Color',
@@ -153,7 +183,8 @@ const en = {
         upload_font: 'Upload Custom Font (.ttf, .woff)',
         upload_btn: 'Upload Font',
         font_placeholder: 'Select from list...',
-        search_fonts: 'Search fonts...'
+        search_fonts: 'Search fonts...',
+        custom_bg: 'Background Color'
     },
     settings: {
         title: 'Settings',
@@ -164,11 +195,11 @@ const en = {
             public: 'Public',
             account: 'Account',
             about: 'About',
-            data: 'Data Management'
+            data: 'Data Management',
+            layout: 'Layout'
         },
         theme: 'Theme',
         language: 'Language',
-        weather_api: 'OpenWeatherMap API Key',
         display_name: 'Display Name',
         account_hint_name: 'e.g. Rea (Becomes: ReaLog)',
         admin_password: 'New Admin Password',
@@ -213,7 +244,15 @@ const en = {
         uptodate: 'System is up to date',
         update_error: 'Error checking version',
         update_btn: 'Install Update',
-        whats_new: 'What\'s New'
+        whats_new: 'What\'s New',
+        layout_desc: 'Configure the order of the Entry Detail modal sections.',
+        layout_header: 'Header (Title, Date, Weather)',
+        layout_tags: 'Tags',
+        layout_mood: 'Mood',
+        layout_content: 'Content (Text / Questions)',
+        layout_habits: 'Habits',
+        layout_gallery: 'Gallery',
+        dev_mode: 'Developer Mode'
     },
     update: {
         in_progress: 'Update in progress...',
@@ -312,6 +351,7 @@ const en = {
         map_preview: 'Map',
         insert_time: 'Insert Time',
         habits_title: 'Habits',
+        weather_history_error: 'Failed to fetch weather data.',
     },
     questions: {
         title: 'Manage Questions',
@@ -330,9 +370,10 @@ const en = {
         unit_placeholder: 'Unit (e.g. cup)',
         goal_placeholder: 'Goal (e.g. 8)',
         active: 'Active',
-        inactive: 'Inactive'
+        inactive: 'Inactive',
+        icon: 'Icon',
+        select_icon: 'Select Icon'
     },
-    // ... (rest)
     deploy: {
         title: 'Deploy ReaLog',
         subtitle: 'Own Server',

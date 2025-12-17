@@ -7,8 +7,23 @@ import { WeatherData, WeatherIconPack } from '../../types';
 export const getWeatherCategory = (data?: WeatherData): string => {
     if (!data) return 'Other';
     
-    // 1. Try Icon Code (OpenWeatherMap)
-    if (data.icon) {
+    // 1. Try WMO Code (Open-Meteo) stored in icon as wmo_XX
+    // Also handle if the code is stored in 'condition' field for legacy reasons/stats
+    const codeSource = (data.icon && data.icon.startsWith('wmo_')) ? data.icon : 
+                       (data.condition && data.condition.startsWith('wmo_')) ? data.condition : null;
+
+    if (codeSource) {
+        const code = parseInt(codeSource.replace('wmo_', ''), 10);
+        if (code === 0) return 'Clear';
+        if (code >= 1 && code <= 3) return 'Clouds';
+        if (code === 45 || code === 48) return 'Mist';
+        if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'Rain';
+        if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return 'Snow';
+        if (code >= 95 && code <= 99) return 'Storm';
+    }
+
+    // 2. Try Icon Code (Legacy OpenWeatherMap)
+    if (data.icon && !data.icon.startsWith('wmo_')) {
         const c = data.icon;
         if (c.startsWith('01')) return 'Clear';
         if (c.startsWith('02') || c.startsWith('03') || c.startsWith('04')) return 'Clouds';
@@ -18,7 +33,7 @@ export const getWeatherCategory = (data?: WeatherData): string => {
         if (c.startsWith('50')) return 'Mist';
     }
 
-    // 2. Fallback to condition text
+    // 3. Fallback to condition text
     const cond = (data.condition || '').toLowerCase();
     if (cond.includes('storm') || cond.includes('thunder')) return 'Storm';
     if (cond.includes('snow') || cond.includes('sleet')) return 'Snow';
@@ -38,6 +53,9 @@ interface WeatherRendererProps {
 
 const WeatherRenderer: React.FC<WeatherRendererProps> = ({ data, pack = 'outline', className = "w-5 h-5" }) => {
     const category = getWeatherCategory(data);
+    
+    // Determine night mode. WMO doesn't explicitly store day/night in the code, 
+    // so we default to Day unless legacy OWM 'n' icon is present.
     const isNight = data.icon?.endsWith('n');
 
     const IconComponent = {
@@ -89,7 +107,7 @@ const WeatherRenderer: React.FC<WeatherRendererProps> = ({ data, pack = 'outline
 
     // 5. ASCII (Retro)
     if (pack === 'ascii') {
-        const fontClass = "font-mono text-xs leading-none";
+        const fontClass = "font-mono text-xs leading-none font-bold";
         switch(category) {
             case 'Clear': return <span className={fontClass}>{isNight ? 'C' : 'O'}</span>;
             case 'Clouds': return <span className={fontClass}>@</span>;
@@ -111,15 +129,15 @@ const WeatherRenderer: React.FC<WeatherRendererProps> = ({ data, pack = 'outline
         return <IconComponent className={className} strokeWidth={3} />;
     }
 
-    // 8. Cartoon (Black stroke, colored fill)
+    // 8. Cartoon (Thick black stroke, colored fill)
     if (pack === 'cartoon') {
-        const base = `${className} stroke-black stroke-2`;
+        const base = `${className} stroke-black stroke-[2.5px]`;
         switch(category) {
-            case 'Clear': return isNight ? <Moon className={`${base} fill-yellow-100`} /> : <Sun className={`${base} fill-yellow-400`} />;
-            case 'Clouds': return <Cloud className={`${base} fill-gray-100`} />;
+            case 'Clear': return isNight ? <Moon className={`${base} fill-indigo-200`} /> : <Sun className={`${base} fill-yellow-400`} />;
+            case 'Clouds': return <Cloud className={`${base} fill-white`} />;
             case 'Rain': return <CloudRain className={`${base} fill-blue-300`} />;
-            case 'Snow': return <Snowflake className={`${base} fill-white`} />;
-            case 'Storm': return <CloudLightning className={`${base} fill-purple-300`} />;
+            case 'Snow': return <Snowflake className={`${base} fill-cyan-100`} />;
+            case 'Storm': return <CloudLightning className={`${base} fill-purple-400`} />;
             case 'Mist': return <CloudFog className={`${base} fill-gray-200`} />;
             default: return <CloudSun className={`${base} fill-orange-200`} />;
         }
@@ -132,15 +150,16 @@ const WeatherRenderer: React.FC<WeatherRendererProps> = ({ data, pack = 'outline
 
     // 10. Neon (Glow effect)
     if (pack === 'neon') {
-        const glow = (col: string) => `${className} ${col} drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]`;
+        // Tailwind arbitrary variants are nice but for inline style safety we use drop-shadow
+        const glow = (col: string) => `${className} ${col} drop-shadow-[0_0_3px_currentColor] filter`;
         switch(category) {
-            case 'Clear': return <IconComponent className={glow(isNight ? 'text-indigo-300' : 'text-yellow-400')} />;
-            case 'Clouds': return <IconComponent className={glow('text-cyan-200')} />;
-            case 'Rain': return <IconComponent className={glow('text-blue-400')} />;
+            case 'Clear': return <IconComponent className={glow(isNight ? 'text-indigo-400' : 'text-yellow-400')} />;
+            case 'Clouds': return <IconComponent className={glow('text-cyan-400')} />;
+            case 'Rain': return <IconComponent className={glow('text-blue-500')} />;
             case 'Snow': return <IconComponent className={glow('text-white')} />;
-            case 'Storm': return <IconComponent className={glow('text-purple-400')} />;
-            case 'Mist': return <IconComponent className={glow('text-teal-300')} />;
-            default: return <IconComponent className={glow('text-orange-300')} />;
+            case 'Storm': return <IconComponent className={glow('text-purple-500')} />;
+            case 'Mist': return <IconComponent className={glow('text-teal-400')} />;
+            default: return <IconComponent className={glow('text-orange-400')} />;
         }
     }
 

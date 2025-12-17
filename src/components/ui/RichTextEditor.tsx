@@ -8,9 +8,10 @@ interface RichTextEditorProps {
     themeClasses: any;
     placeholder?: string;
     minHeight?: string;
+    fontSize?: string; // New
 }
 
-const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, themeClasses, placeholder, minHeight = "200px" }) => {
+const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, themeClasses, placeholder, minHeight = "200px", fontSize = "100%" }) => {
     const editorRef = useRef<HTMLDivElement>(null);
     const isUpdatingRef = useRef(false);
 
@@ -89,7 +90,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, themeC
                 className={`flex-1 p-4 focus:outline-none overflow-y-auto prose prose-sm max-w-none ${themeClasses.text} prose-invert`}
                 contentEditable
                 onInput={handleInput}
-                style={{ minHeight }}
+                style={{ minHeight, fontSize }}
                 data-placeholder={placeholder}
             />
             <style>{`
