@@ -79,7 +79,7 @@ const Navbar: React.FC<NavbarProps> = ({
                      </div>
                      
                      <div className="flex flex-col hidden md:flex min-w-[100px]">
-                         <span className="font-bold text-lg tracking-tight leading-none truncate">{appName}</span>
+                         <span className="font-bold text-lg tracking-tight leading-none truncate" style={{ fontFamily: "'Lobster', cursive" }}>{appName}</span>
                          {greeting && <span className="text-[10px] opacity-60 italic leading-none mt-0.5">{greeting}</span>}
                      </div>
 

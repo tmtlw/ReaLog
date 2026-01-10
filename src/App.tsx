@@ -369,21 +369,24 @@ export default function App() {
       if (activeCategory === Category.MONTHLY) label = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}`;
       if (activeCategory === Category.YEARLY) label = `${today.getFullYear()}`;
 
-      // Initialize responses based on priority: Active Questions -> Default Template -> Random 4
-      let selectedQuestions = data.questions.filter(q => q.category === activeCategory && q.isActive);
+      // Initialize responses based on priority: Default Template -> Active Questions -> Random 4
+      let selectedQuestions: typeof data.questions = [];
 
-      if (selectedQuestions.length === 0) {
-          // Try Default Template
-          const defaultTemplate = data.templates?.find(t => t.category === activeCategory && t.isDefault);
-          if (defaultTemplate) {
-              selectedQuestions = data.questions.filter(q =>
-                  q.category === activeCategory && defaultTemplate.questions.includes(q.text)
-              );
-          }
+      // 1. Try Default Template
+      const defaultTemplate = data.templates?.find(t => t.category === activeCategory && t.isDefault);
+      if (defaultTemplate) {
+          selectedQuestions = data.questions.filter(q =>
+              q.category === activeCategory && defaultTemplate.questions.includes(q.text)
+          );
       }
 
+      // 2. If no template applied, try Active Questions
       if (selectedQuestions.length === 0) {
-          // Fallback: Random 4
+          selectedQuestions = data.questions.filter(q => q.category === activeCategory && q.isActive);
+      }
+
+      // 3. Fallback: Random 4
+      if (selectedQuestions.length === 0) {
           const allCategoryQuestions = data.questions.filter(q => q.category === activeCategory);
           if (allCategoryQuestions.length > 0) {
               const shuffled = [...allCategoryQuestions].sort(() => 0.5 - Math.random());
@@ -749,6 +752,7 @@ export default function App() {
                       themeClasses={themeClasses} 
                       showAll={true} 
                       emojiStyle={emojiStyle} 
+                      fixPosition={true}
                   />
               </div>
           </div>
@@ -764,7 +768,7 @@ export default function App() {
   // --- Render ---
   
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${themeClasses.bg} ${themeClasses.text} font-sans selection:bg-emerald-500/30 flex flex-col`}>
+    <div className={`min-h-screen transition-colors duration-300 ${themeClasses.bg} ${themeClasses.text} selection:bg-emerald-500/30 flex flex-col`}>
         {/* Modals */}
         {showAuthModal && (
             <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">

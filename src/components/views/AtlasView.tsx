@@ -13,7 +13,8 @@ const AtlasView: React.FC<{
   isAdmin?: boolean;
   t?: (key: string) => string;
   emojiStyle?: EmojiStyle;
-}> = ({ entries, activeCategory, onSelectEntry, themeClasses, showAll, isAdmin, emojiStyle = 'native' }) => {
+  fixPosition?: boolean;
+}> = ({ entries, activeCategory, onSelectEntry, themeClasses, showAll, isAdmin, emojiStyle = 'native', fixPosition }) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<any>(null);
 
@@ -67,7 +68,7 @@ const AtlasView: React.FC<{
                        // @ts-ignore
                        const customIcon = L.divIcon({
                            className: 'custom-map-marker', 
-                           html: `<div class="w-6 h-6 rounded-full border-2 border-white shadow-lg flex items-center justify-center ${colorClass}"><div class="w-1.5 h-1.5 bg-white rounded-full"></div></div>`,
+                           html: `<div class="w-6 h-6 rounded-full border-2 border-white shadow-lg flex items-center justify-center ${colorClass}" style="${!fixPosition ? 'transform: translate(-25%, -25%);' : ''}"><div class="w-1.5 h-1.5 bg-white rounded-full"></div></div>`,
                            iconSize: [24, 24],
                            iconAnchor: [12, 12]
                        });
