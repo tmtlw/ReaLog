@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Entry, Category, WeatherData, AppSettings, Question, Template, WeatherIconPack, EmojiStyle, SavedLocation, Habit } from '../../types';
 import { Button, Input } from '../ui';
+import { stringToColor, stringToBgColor } from '../../utils/colors';
 import * as StorageService from '../../services/storage';
 import TemplateModal from '../modals/TemplateModal';
 import LocationPickerModal from '../modals/LocationPickerModal';
@@ -795,7 +796,14 @@ const EntryEditor: React.FC<EntryEditorProps> = ({
               {detectedTags.length > 0 && (
                   <div className="flex flex-wrap gap-2 text-xs opacity-80 justify-center md:justify-start">
                       {detectedTags.map(tag => (
-                          <span key={tag} className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-bold border border-emerald-500/20">
+                          <span
+                            key={tag}
+                            className="px-2 py-0.5 rounded font-bold border border-current border-opacity-10"
+                            style={{
+                                backgroundColor: stringToBgColor(tag, isDark ? 'dark' : 'light'),
+                                color: stringToColor(tag, isDark ? 'dark' : 'light')
+                            }}
+                          >
                               #{tag}
                           </span>
                       ))}

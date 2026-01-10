@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Entry } from '../../types';
 import { Button, Input } from '../ui';
 import { Edit2, Trash2, ArrowLeft, Save, Tag, Cloud, List, X } from 'lucide-react';
+import { stringToColor, stringToBgColor } from '../../utils/colors';
 
 interface TagManagerProps {
     entries: Entry[];
@@ -158,17 +159,23 @@ const TagManager: React.FC<TagManagerProps> = ({ entries, onUpdateEntries, onBac
                     {sortedTags.length === 0 ? (
                         <p className="opacity-50 italic">{t('app.no_tags')}</p>
                     ) : (
-                        sortedTags.map(([tag, count]) => (
-                            <button
-                                key={tag}
-                                onClick={() => onSelectTag(tag)}
-                                style={{ fontSize: getFontSize(count) }}
-                                className={`font-bold transition-all hover:text-emerald-500 hover:scale-110 opacity-80 hover:opacity-100 px-2 py-1 rounded`}
-                                title={`${count} ${t('tags.count')}`}
-                            >
-                                #{tag}
-                            </button>
-                        ))
+                        sortedTags.map(([tag, count]) => {
+                            const isDark = themeClasses.bg.includes('black') || themeClasses.bg.includes('9');
+                            return (
+                                <button
+                                    key={tag}
+                                    onClick={() => onSelectTag(tag)}
+                                    style={{
+                                        fontSize: getFontSize(count),
+                                        color: stringToColor(tag, isDark ? 'dark' : 'light')
+                                    }}
+                                    className={`font-bold transition-all hover:scale-110 opacity-80 hover:opacity-100 px-2 py-1 rounded`}
+                                    title={`${count} ${t('tags.count')}`}
+                                >
+                                    #{tag}
+                                </button>
+                            );
+                        })
                     )}
                 </div>
             ) : (
@@ -194,7 +201,15 @@ const TagManager: React.FC<TagManagerProps> = ({ entries, onUpdateEntries, onBac
                             ) : (
                                 <>
                                     <div className="flex items-center gap-2">
-                                        <span className={`px-2 py-1 rounded text-sm font-bold bg-emerald-500/10 text-emerald-500`}>#{tag}</span>
+                                        <span
+                                            className={`px-2 py-1 rounded text-sm font-bold`}
+                                            style={{
+                                                backgroundColor: stringToBgColor(tag, themeClasses.bg.includes('black') || themeClasses.bg.includes('9') ? 'dark' : 'light'),
+                                                color: stringToColor(tag, themeClasses.bg.includes('black') || themeClasses.bg.includes('9') ? 'dark' : 'light')
+                                            }}
+                                        >
+                                            #{tag}
+                                        </span>
                                         <span className="text-xs opacity-50">({count} {t('tags.count')})</span>
                                     </div>
                                     {isAdmin && (
