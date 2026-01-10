@@ -369,10 +369,30 @@ export default function App() {
       if (activeCategory === Category.MONTHLY) label = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}`;
       if (activeCategory === Category.YEARLY) label = `${today.getFullYear()}`;
 
-      // Initialize responses with active questions to ensure they appear
-      const activeQuestions = data.questions.filter(q => q.category === activeCategory && q.isActive);
+      // Initialize responses based on priority: Active Questions -> Default Template -> Random 4
+      let selectedQuestions = data.questions.filter(q => q.category === activeCategory && q.isActive);
+
+      if (selectedQuestions.length === 0) {
+          // Try Default Template
+          const defaultTemplate = data.templates?.find(t => t.category === activeCategory && t.isDefault);
+          if (defaultTemplate) {
+              selectedQuestions = data.questions.filter(q =>
+                  q.category === activeCategory && defaultTemplate.questions.includes(q.text)
+              );
+          }
+      }
+
+      if (selectedQuestions.length === 0) {
+          // Fallback: Random 4
+          const allCategoryQuestions = data.questions.filter(q => q.category === activeCategory);
+          if (allCategoryQuestions.length > 0) {
+              const shuffled = [...allCategoryQuestions].sort(() => 0.5 - Math.random());
+              selectedQuestions = shuffled.slice(0, 4);
+          }
+      }
+
       const initialResponses: Record<string, string> = {};
-      activeQuestions.forEach(q => initialResponses[q.id] = "");
+      selectedQuestions.forEach(q => initialResponses[q.id] = "");
 
       setCurrentEntry({
           id: crypto.randomUUID(),

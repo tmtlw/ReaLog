@@ -637,7 +637,7 @@ const EntryEditor: React.FC<EntryEditorProps> = ({
 
                     {/* Static Map Preview on the Right (max 50% width on md) */}
                     {currentEntry.gps && (
-                        <div className="w-full md:w-1/3 min-h-[120px] h-32 md:h-auto rounded-lg overflow-hidden border border-current border-opacity-10 relative cursor-pointer" onClick={() => setShowLocationPicker(true)} title="Térkép megnyitása">
+                        <div className="w-full md:w-1/2 min-h-[120px] h-32 md:h-auto rounded-lg overflow-hidden border border-current border-opacity-10 relative cursor-pointer" onClick={() => setShowLocationPicker(true)} title="Térkép megnyitása">
                             <div className="absolute inset-0">
                                 <AtlasView 
                                     entries={[{...currentEntry} as Entry]} 
