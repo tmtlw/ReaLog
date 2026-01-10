@@ -27,7 +27,7 @@ const AtlasView: React.FC<{
                  try {
                     mapInstanceRef.current.remove();
                  } catch(e) {
-                    console.warn("AtlasView map remove error", e);
+                    // Ignore remove errors
                  }
                  mapInstanceRef.current = null;
             }
@@ -40,7 +40,11 @@ const AtlasView: React.FC<{
 
         try {
             // @ts-ignore
-            const map = L.map(mapContainerRef.current).setView([47.1625, 19.5033], 7);
+            const map = L.map(mapContainerRef.current, {
+                zoomAnimation: false,
+                fadeAnimation: false,
+                markerZoomAnimation: false
+            }).setView([47.1625, 19.5033], 7);
             
             // @ts-ignore
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
