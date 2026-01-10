@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Data files
+entries.json
+settings.json
+questions.json
+img/

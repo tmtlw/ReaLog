@@ -1,17 +1,21 @@
+Options +ExecCGI
+AddHandler cgi-script .jscript
+DirectoryIndex index.html
+
 <IfModule mod_rewrite.c>
 RewriteEngine On
 
 # Ha alkönyvtárban (pl. /naplo/) fut, vedd ki a kommentet az alábbi sorból:
 # RewriteBase /naplo/
 
-# API hívások irányítása az api.php felé
-RewriteRule ^api/(.*)$ api.php [L,QSA]
+# 1. API hívások irányítása az api.jscript felé
+RewriteRule ^api/(.*)$ api.jscript [L]
 
-# Meglévő fájlok és könyvtárak közvetlen kiszolgálása
+# 2. Meglévő fájlok közvetlen kiszolgálása
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# Minden más kérés irányítása az index.html-re (kliens oldali routing)
+# 3. Minden más -> index.html (kliens oldali routing)
 RewriteRule ^ index.html [L]
 </IfModule>

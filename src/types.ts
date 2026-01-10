@@ -118,6 +118,7 @@ export interface CloudConfig {
 export interface AppSettings {
   userName?: string;
   adminPassword?: string;
+  openWeatherMapKey?: string;
   profileImage?: string;
   bookCoverImage?: string;
   theme?: ThemeOption;
