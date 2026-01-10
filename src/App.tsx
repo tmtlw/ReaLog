@@ -583,7 +583,7 @@ export default function App() {
           entries = entries.filter(e => 
               e.title?.toLowerCase().includes(q) ||
               e.location?.toLowerCase().includes(q) ||
-              e.tags?.some(t => t.toLowerCase().includes(q)) ||
+              e.tags?.some(t => t.toLowerCase().includes(q) || `#${t.toLowerCase()}`.includes(q)) ||
               e.freeTextContent?.toLowerCase().includes(q) ||
               Object.values(e.responses).some((r: any) => typeof r === 'string' && r.toLowerCase().includes(q))
           );
@@ -899,6 +899,7 @@ export default function App() {
             currentStreak={0} 
             logoEmoji={logoEmoji}
             greeting={getGreeting()} 
+            setSearchQuery={setSearchQuery}
         />
 
         <main className="flex-1 max-w-6xl mx-auto w-full p-4 pb-24">
