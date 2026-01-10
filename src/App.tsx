@@ -825,16 +825,17 @@ export default function App() {
                    
                    <div className="p-6 md:p-8">
                         {getLayout().map(part => {
+                            let content = null;
                             switch(part) {
-                                case 'header': return renderHeader(selectedEntry);
-                                case 'mood': return renderMood(selectedEntry);
-                                case 'tags': return renderTags(selectedEntry);
-                                case 'content': return renderContent(selectedEntry);
-                                case 'habits': return renderHabits(selectedEntry);
-                                case 'gallery': return renderGallery(selectedEntry);
-                                case 'map': return renderMap(selectedEntry);
-                                default: return null;
+                                case 'header': content = renderHeader(selectedEntry); break;
+                                case 'mood': content = renderMood(selectedEntry); break;
+                                case 'tags': content = renderTags(selectedEntry); break;
+                                case 'content': content = renderContent(selectedEntry); break;
+                                case 'habits': content = renderHabits(selectedEntry); break;
+                                case 'gallery': content = renderGallery(selectedEntry); break;
+                                case 'map': content = renderMap(selectedEntry); break;
                             }
+                            return content ? <React.Fragment key={part}>{content}</React.Fragment> : null;
                         })}
                    </div>
 
