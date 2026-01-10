@@ -51,12 +51,29 @@ const DynamicIcon = ({ name, className }: { name: string, className?: string }) 
 };
 
 export default function App() {
-  const [data, setData] = useState<AppData>(INITIAL_DATA);
+  // Load data synchronously to prevent layout/font flash
+  const [data, setData] = useState<AppData>(() => {
+      const local = StorageService.loadData();
+      if (local) {
+          return {
+              ...INITIAL_DATA,
+              ...local,
+              settings: { ...INITIAL_DATA.settings, ...(local.settings || {}) },
+              questions: local.questions || INITIAL_DATA.questions
+          };
+      }
+      return INITIAL_DATA;
+  });
+
   const [activeCategory, setActiveCategory] = useState<Category>(Category.DAILY);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAppLoading, setIsAppLoading] = useState(true);
   
-  const [currentTheme, setCurrentTheme] = useState<ThemeOption>('dark');
+  const [currentTheme, setCurrentTheme] = useState<ThemeOption>(() => {
+      // Try to get theme from loaded data
+      const local = StorageService.loadData();
+      return local?.settings?.theme || 'dark';
+  });
   const [themeClasses, setThemeClasses] = useState(THEMES.dark);
   const [logoEmoji, setLogoEmoji] = useState<string | null>(null);
   const [holidayName, setHolidayName] = useState<string | null>(null);
@@ -124,10 +141,7 @@ export default function App() {
         setIsAppLoading(true);
         const local = StorageService.loadData();
         
-        // Restore Theme from local cache initially to prevent flash
-        if (local.settings?.theme) {
-            setCurrentTheme(local.settings.theme);
-        }
+        // Theme is already initialized in useState
         
         // Restore Auth
         if (StorageService.checkAuthSession()) {
