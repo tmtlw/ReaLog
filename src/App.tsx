@@ -66,6 +66,11 @@ export default function App() {
       return INITIAL_DATA;
   });
 
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+      if (data.users && data.users.length > 0) return data.users[0];
+      return null;
+  });
+
   const [activeCategory, setActiveCategory] = useState<Category>(Category.DAILY);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAppLoading, setIsAppLoading] = useState(true);
@@ -95,7 +100,7 @@ export default function App() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   // Views
-  const [globalView, setGlobalView] = useState<'none' | 'atlas' | 'gallery' | 'tags' | 'onThisDay' | 'trash' | 'stats' | 'streak'>('none');
+  const [globalView, setGlobalView] = useState<'dashboard' | 'none' | 'atlas' | 'gallery' | 'tags' | 'onThisDay' | 'trash' | 'stats' | 'streak'>('dashboard');
   const [viewMode, setViewMode] = useState<'grid' | 'timeline' | 'calendar' | 'atlas' | 'gallery'>('grid');
   const [activeTab, setActiveTab] = useState<'entries' | 'questions' | 'habits'>('entries');
   
@@ -559,6 +564,11 @@ export default function App() {
           entries = entries.filter(e => !e.isPrivate);
       }
 
+      // Filter by user for standard views (keep "old way")
+      if (currentUser && globalView !== 'dashboard') {
+          entries = entries.filter(e => e.userId === currentUser.id);
+      }
+
       if (globalView === 'atlas' || globalView === 'gallery') {
           // No category filter
       } else if (globalView === 'onThisDay') {
@@ -591,7 +601,7 @@ export default function App() {
       }
 
       return entries.sort((a, b) => b.timestamp - a.timestamp);
-  }, [data.entries, activeCategory, globalView, searchQuery, isAdmin, data.settings]);
+  }, [data.entries, activeCategory, globalView, searchQuery, isAdmin, data.settings, currentUser]);
 
   // On This Day Logic for Dashboard Card
   const onThisDayEntries = useMemo(() => {
@@ -904,7 +914,7 @@ export default function App() {
         <Navbar 
             appName={holidayName || data.settings?.userName || 'ReaLog'}
             activeCategory={activeCategory}
-            setActiveCategory={setActiveCategory}
+            setActiveCategory={(cat) => { setActiveCategory(cat); setGlobalView('none'); }}
             globalView={globalView}
             setGlobalView={setGlobalView}
             setActiveTab={setActiveTab}
@@ -995,6 +1005,17 @@ export default function App() {
                     themeClasses={themeClasses} 
                     renderActionButtons={renderActionButtons} // Pass action buttons
                     t={t}
+                />
+            ) : globalView === 'dashboard' ? (
+                <DashboardView
+                    data={data}
+                    currentUser={currentUser}
+                    themeClasses={themeClasses}
+                    t={t}
+                    onSelectEntry={setSelectedEntry}
+                    isAdmin={isAdmin}
+                    weatherPack={weatherPack}
+                    emojiStyle={emojiStyle}
                 />
             ) : globalView === 'stats' ? (
                 <StatsView 
