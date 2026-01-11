@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Layers, LayoutGrid, FileText, Activity } from 'lucide-react';
+import { Layers, LayoutGrid, FileText, Activity, ThermometerSun } from 'lucide-react';
 import { Category, AppSettings } from '../../types';
 
 interface SettingsViewsTabProps {
@@ -55,6 +55,24 @@ const SettingsViewsTab: React.FC<SettingsViewsTabProps> = ({ localSettings, setL
                         />
                         <span className="text-sm">{t('settings.layout_masonry')}</span>
                     </label>
+                </div>
+            </div>
+
+            {/* Weather Icons Section */}
+            <div className="p-4 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-sm">
+                <h4 className="font-bold flex items-center gap-2 mb-3 text-cyan-500">
+                    <ThermometerSun className="w-4 h-4" /> {t('settings.weather_icons')}
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                    {['outline', 'filled', 'color', 'emoji', 'ascii', 'thin', 'bold', 'cartoon', 'mono-duotone', 'neon'].map(pack => (
+                        <button
+                            key={pack}
+                            onClick={() => setLocalSettings(prev => ({ ...prev, weatherIconPack: pack as any }))}
+                            className={`p-2 rounded border text-xs capitalize ${localSettings.weatherIconPack === pack ? 'bg-cyan-500 text-white border-cyan-500' : 'bg-black/5 border-transparent hover:bg-black/10'}`}
+                        >
+                            {pack}
+                        </button>
+                    ))}
                 </div>
             </div>
 
