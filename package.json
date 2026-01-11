@@ -1,10 +1,27 @@
-
 {
   "name": "realog",
   "version": "5.8.0",
-  "description": "ReaLog - Minimalista, JSON alapú életkövető rendszer (PHP / Node.js)",
+  "description": "ReaLog - Minimalista, JSON alapú életkövető rendszer",
   "scripts": {
-    "test": "echo \"Run on PHP (Recommended) or Node.js CGI\""
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@google/genai": "^1.35.0",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^0.562.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.8",
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "@vitejs/plugin-react": "^4.2.0",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.0"
+  }
 }

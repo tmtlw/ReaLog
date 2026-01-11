@@ -67,7 +67,11 @@ const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
 
         try {
             // @ts-ignore
-            const map = L.map(mapContainerRef.current).setView([47.4979, 19.0402], 6);
+            const map = L.map(mapContainerRef.current, {
+                zoomAnimation: false,
+                fadeAnimation: false,
+                markerZoomAnimation: false
+            }).setView([47.4979, 19.0402], 6);
             mapInstanceRef.current = map;
             
             // @ts-ignore

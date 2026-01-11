@@ -1,0 +1,87 @@
+#!/usr/bin/env node
+const fs = require('fs');
+const path = require('path');
+
+const ENTRIES_FILE = path.join(__dirname, 'entries.json');
+const SETTINGS_FILE = path.join(__dirname, 'settings.json');
+const QUESTIONS_FILE = path.join(__dirname, 'questions.json');
+const IMG_DIR = path.join(__dirname, 'img');
+
+// Képek mappa létrehozása, ha nem létezik
+if (!fs.existsSync(IMG_DIR)){
+    fs.mkdirSync(IMG_DIR);
+}
+
+// Segédfüggvény JSON válasz küldéséhez
+const send = (data, status = 200) => {
+    // CGI fejlécek: Content-Type + 2 sortörés
+    console.log("Content-Type: application/json; charset=utf-8");
+    console.log("");
+    console.log(JSON.stringify(data));
+    process.exit(0);
+};
+
+try {
+    const uri = process.env.REQUEST_URI || '';
+    const method = process.env.REQUEST_METHOD || 'GET';
+
+    if (uri.includes('/status')) {
+        send({ status: 'online', nodeVersion: process.version, type: 'nodejs' });
+    }
+    else if (uri.includes('/upload') && method === 'POST') {
+        send({ error: "Képfeltöltés Node.js alatt extra könyvtárak nélkül korlátozott. Kérlek használj PHP módot." });
+    }
+    else if (method === 'GET') {
+        let entries = [];
+        let settings = {};
+        let questions = [];
+
+        if (fs.existsSync(ENTRIES_FILE)) {
+            try {
+                entries = JSON.parse(fs.readFileSync(ENTRIES_FILE, 'utf8'));
+            } catch(e) {}
+        }
+        if (fs.existsSync(SETTINGS_FILE)) {
+            try {
+                settings = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
+            } catch(e) {}
+        }
+        if (fs.existsSync(QUESTIONS_FILE)) {
+             try {
+                questions = JSON.parse(fs.readFileSync(QUESTIONS_FILE, 'utf8'));
+            } catch(e) {}
+        }
+
+        send({ entries, settings, questions });
+    }
+    else if (method === 'POST') {
+        let body = '';
+        process.stdin.setEncoding('utf8');
+        process.stdin.on('data', chunk => body += chunk);
+        process.stdin.on('end', () => {
+            try {
+                const input = JSON.parse(body);
+                if (input.questions) {
+                    fs.writeFileSync(QUESTIONS_FILE, JSON.stringify(input.questions), 'utf8');
+                }
+                if (input.entries) {
+                    fs.writeFileSync(ENTRIES_FILE, JSON.stringify(input.entries), 'utf8');
+                }
+                if (input.settings) {
+                    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(input.settings), 'utf8');
+                }
+                send({ success: true });
+            } catch (e) {
+                console.log("Status: 400 Bad Request");
+                send({ error: "Érvénytelen JSON vagy írási hiba: " + e.message });
+            }
+        });
+    }
+    else {
+        console.log("Status: 405 Method Not Allowed");
+        send({ error: "A metódus nem engedélyezett" });
+    }
+} catch (err) {
+    console.log("Status: 500 Internal Server Error");
+    send({ error: err.message });
+}

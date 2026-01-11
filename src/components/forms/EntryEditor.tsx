@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Entry, Category, WeatherData, AppSettings, Question, Template, WeatherIconPack, EmojiStyle, SavedLocation, Habit } from '../../types';
 import { Button, Input } from '../ui';
+import { stringToColor, stringToBgColor } from '../../utils/colors';
 import * as StorageService from '../../services/storage';
 import TemplateModal from '../modals/TemplateModal';
 import LocationPickerModal from '../modals/LocationPickerModal';
@@ -635,9 +636,9 @@ const EntryEditor: React.FC<EntryEditorProps> = ({
                         )}
                     </div>
 
-                    {/* Static Map Preview on the Right (max 50% width on md) */}
+                    {/* Static Map Preview on the Right (50% split) */}
                     {currentEntry.gps && (
-                        <div className="w-full md:w-1/3 min-h-[120px] h-32 md:h-auto rounded-lg overflow-hidden border border-current border-opacity-10 relative cursor-pointer" onClick={() => setShowLocationPicker(true)} title="Térkép megnyitása">
+                        <div className="w-full md:flex-1 min-h-[120px] h-32 md:h-auto rounded-lg overflow-hidden border border-current border-opacity-10 relative cursor-pointer" onClick={() => setShowLocationPicker(true)} title="Térkép megnyitása">
                             <div className="absolute inset-0">
                                 <AtlasView 
                                     entries={[{...currentEntry} as Entry]} 
@@ -646,6 +647,7 @@ const EntryEditor: React.FC<EntryEditorProps> = ({
                                     themeClasses={themeClasses} 
                                     showAll={true} 
                                     emojiStyle={emojiStyle} 
+                                    fixPosition={true}
                                 />
                             </div>
                             <div className="absolute inset-0 bg-black/10 hover:bg-black/0 transition-colors pointer-events-none" />
@@ -794,7 +796,14 @@ const EntryEditor: React.FC<EntryEditorProps> = ({
               {detectedTags.length > 0 && (
                   <div className="flex flex-wrap gap-2 text-xs opacity-80 justify-center md:justify-start">
                       {detectedTags.map(tag => (
-                          <span key={tag} className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-bold border border-emerald-500/20">
+                          <span
+                            key={tag}
+                            className="px-2 py-0.5 rounded font-bold border border-current border-opacity-10"
+                            style={{
+                                backgroundColor: stringToBgColor(tag, isDark ? 'dark' : 'light'),
+                                color: stringToColor(tag, isDark ? 'dark' : 'light')
+                            }}
+                          >
                               #{tag}
                           </span>
                       ))}

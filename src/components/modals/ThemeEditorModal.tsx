@@ -9,10 +9,10 @@ import WeatherRenderer from '../ui/WeatherRenderer';
 import EmojiRenderer from '../ui/EmojiRenderer';
 import * as StorageService from '../../services/storage';
 
-// All 10 Packs
+// All 11 Packs
 const WEATHER_PACKS: WeatherIconPack[] = [
     'outline', 'filled', 'color', 'emoji', 'ascii', 
-    'thin', 'bold', 'cartoon', 'mono-duotone', 'neon'
+    'thin', 'bold', 'cartoon', 'mono-duotone', 'neon', 'real'
 ];
 
 // Extracted Preview Components to prevent re-creation on render
@@ -538,6 +538,8 @@ const ThemeEditorModal: React.FC<{
                                 <EmojiPreview style="soft" currentStyle={emojiStyle} onSelect={setEmojiStyle} t={t} />
                                 <EmojiPreview style="retro" currentStyle={emojiStyle} onSelect={setEmojiStyle} t={t} />
                                 <EmojiPreview style="glitch" currentStyle={emojiStyle} onSelect={setEmojiStyle} t={t} />
+                                <EmojiPreview style="twemoji" currentStyle={emojiStyle} onSelect={setEmojiStyle} t={t} />
+                                <EmojiPreview style="blob" currentStyle={emojiStyle} onSelect={setEmojiStyle} t={t} />
                             </div>
                             <div className="pt-4">
                                 <Button className="w-full" onClick={handleSaveEmoji} themeClasses={themeClasses} disabled={isSaving}>

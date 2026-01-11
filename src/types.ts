@@ -72,8 +72,8 @@ export interface Entry {
 }
 
 export type ThemeOption = 'dark' | 'light' | 'lavender' | 'nord' | 'forest' | 'ocean' | 'sunset' | 'coffee' | 'rose' | 'cyberpunk' | 'system' | 'custom' | 'holiday';
-export type WeatherIconPack = 'outline' | 'filled' | 'color' | 'emoji' | 'ascii' | 'thin' | 'bold' | 'cartoon' | 'mono-duotone' | 'neon';
-export type EmojiStyle = 'noto' | 'noto-mono' | 'openmoji' | 'emojidex' | 'native' | 'grayscale' | 'sepia' | 'neon' | 'pop' | 'soft' | 'retro' | 'glitch';
+export type WeatherIconPack = 'outline' | 'filled' | 'color' | 'emoji' | 'ascii' | 'thin' | 'bold' | 'cartoon' | 'mono-duotone' | 'neon' | 'real';
+export type EmojiStyle = 'noto' | 'noto-mono' | 'openmoji' | 'emojidex' | 'native' | 'grayscale' | 'sepia' | 'neon' | 'pop' | 'soft' | 'retro' | 'glitch' | 'twemoji' | 'blob';
 
 export interface CategoryConfig {
     viewMode: 'grid' | 'timeline' | 'calendar' | 'atlas' | 'gallery';
@@ -118,6 +118,7 @@ export interface CloudConfig {
 export interface AppSettings {
   userName?: string;
   adminPassword?: string;
+  openWeatherMapKey?: string;
   profileImage?: string;
   bookCoverImage?: string;
   theme?: ThemeOption;

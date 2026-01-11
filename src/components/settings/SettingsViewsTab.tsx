@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Layers, LayoutGrid, FileText, Activity } from 'lucide-react';
+import { Layers, LayoutGrid, FileText, Activity, ThermometerSun } from 'lucide-react';
 import { Category, AppSettings } from '../../types';
 
 interface SettingsViewsTabProps {
@@ -57,6 +57,7 @@ const SettingsViewsTab: React.FC<SettingsViewsTabProps> = ({ localSettings, setL
                     </label>
                 </div>
             </div>
+
 
             {/* Features Toggle Section */}
             <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/20 text-sm">

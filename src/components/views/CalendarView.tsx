@@ -1,8 +1,9 @@
 
 import React from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
-import { Entry } from '../../types';
+import { Entry, EmojiStyle } from '../../types';
 import { CATEGORY_COLORS } from '../../constants';
+import EmojiRenderer from '../ui/EmojiRenderer';
 
 const CalendarView: React.FC<{
     entries: Entry[];
@@ -11,7 +12,8 @@ const CalendarView: React.FC<{
     onSelectEntry: (e: Entry) => void;
     themeClasses: any;
     t?: (key: string) => string;
-}> = ({ entries, currentDate, onDateChange, onSelectEntry, themeClasses, t }) => {
+    emojiStyle?: EmojiStyle;
+}> = ({ entries, currentDate, onDateChange, onSelectEntry, themeClasses, t, emojiStyle = 'native' }) => {
     // Determine days in month
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -92,12 +94,16 @@ const CalendarView: React.FC<{
                                     <div 
                                         key={e.id} 
                                         onClick={(ev) => { ev.stopPropagation(); onSelectEntry(e); }}
-                                        className={`text-[9px] leading-tight p-1 rounded truncate hover:bg-white/10 transition-colors ${e.isDraft ? 'italic opacity-70' : ''}`}
+                                        className={`text-[9px] leading-tight p-1 rounded truncate hover:bg-white/10 transition-colors flex items-center ${e.isDraft ? 'italic opacity-70' : ''}`}
                                         title={`${new Date(e.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - ${e.title || e.dateLabel}`}
                                     >
-                                        <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1 ${CATEGORY_COLORS[e.category]}`}></span>
-                                        <span className="opacity-70 mr-1">{new Date(e.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
-                                        <span className="font-medium">{e.title || e.dateLabel}</span>
+                                        {e.mood ? (
+                                            <span className="mr-1 flex-shrink-0 text-[10px]"><EmojiRenderer emoji={e.mood} style={emojiStyle} /></span>
+                                        ) : (
+                                            <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1 flex-shrink-0 ${CATEGORY_COLORS[e.category]}`}></span>
+                                        )}
+                                        <span className="opacity-70 mr-1 flex-shrink-0">{new Date(e.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                                        <span className="font-medium truncate">{e.title || e.dateLabel}</span>
                                     </div>
                                 ))}
                             </div>

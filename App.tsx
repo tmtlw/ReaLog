@@ -838,14 +838,14 @@ const SETTINGS_FILE = path.join(__dirname, 'settings.json');
 const QUESTIONS_FILE = path.join(__dirname, 'questions.json');
 const IMG_DIR = path.join(__dirname, 'img');
 
-// Ensure img dir exists
+// Képek mappa létrehozása, ha nem létezik
 if (!fs.existsSync(IMG_DIR)){
     fs.mkdirSync(IMG_DIR);
 }
 
-// Helper to send JSON response
+// Segédfüggvény JSON válasz küldéséhez
 const send = (data, status = 200) => {
-    // CGI headers: Content-Type + 2 newlines
+    // CGI fejlécek: Content-Type + 2 sortörés
     console.log("Content-Type: application/json; charset=utf-8");
     console.log(""); 
     console.log(JSON.stringify(data));
@@ -904,13 +904,13 @@ try {
                 send({ success: true });
             } catch (e) {
                 console.log("Status: 400 Bad Request");
-                send({ error: "Invalid JSON or Write Error: " + e.message });
+                send({ error: "Érvénytelen JSON vagy írási hiba: " + e.message });
             }
         });
     }
     else {
         console.log("Status: 405 Method Not Allowed");
-        send({ error: "Method not allowed" });
+        send({ error: "A metódus nem engedélyezett" });
     }
 } catch (err) {
     console.log("Status: 500 Internal Server Error");
@@ -923,17 +923,19 @@ DirectoryIndex index.html
 
 <IfModule mod_rewrite.c>
 RewriteEngine On
-RewriteBase /naplo/
 
-# 1. Route API calls to api.jscript
+# Ha alkönyvtárban (pl. /naplo/) fut, vedd ki a kommentet az alábbi sorból:
+# RewriteBase /naplo/
+
+# 1. API hívások irányítása az api.jscript felé
 RewriteRule ^api/(.*)$ api.jscript [L]
 
-# 2. Serve existing files directly
+# 2. Meglévő fájlok közvetlen kiszolgálása
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# 3. Everything else -> index.html (Client Side Routing)
+# 3. Minden más -> index.html (kliens oldali routing)
 RewriteRule ^ index.html [L]
 </IfModule>`;
 
@@ -948,6 +950,7 @@ $settingsFile = __DIR__ . '/settings.json';
 $questionsFile = __DIR__ . '/questions.json';
 $imgDir = __DIR__ . '/img';
 
+// Képek mappa létrehozása, ha nem létezik
 if (!file_exists($imgDir)) {
     mkdir($imgDir, 0755, true);
 }
@@ -957,17 +960,17 @@ $uri = $_SERVER['REQUEST_URI'];
 
 if ($method === 'OPTIONS') { exit(0); }
 
-// Status check
+// Státusz ellenőrzés
 if (strpos($uri, '/status') !== false) {
     echo json_encode(['status' => 'online', 'type' => 'php', 'version' => phpversion()]);
     exit;
 }
 
-// Image Upload
+// Képfeltöltés
 if (strpos($uri, '/upload') !== false && $method === 'POST') {
     if (!isset($_FILES['image'])) {
         http_response_code(400);
-        echo json_encode(['error' => 'No image file provided']);
+        echo json_encode(['error' => 'Nincs képfájl mellékelve']);
         exit;
     }
     
@@ -977,7 +980,7 @@ if (strpos($uri, '/upload') !== false && $method === 'POST') {
     
     if (!in_array($ext, $allowed)) {
         http_response_code(400);
-        echo json_encode(['error' => 'Invalid file type']);
+        echo json_encode(['error' => 'Érvénytelen fájltípus']);
         exit;
     }
     
@@ -985,11 +988,11 @@ if (strpos($uri, '/upload') !== false && $method === 'POST') {
     $targetPath = $imgDir . '/' . $filename;
     
     if (move_uploaded_file($file['tmp_name'], $targetPath)) {
-        // Return relative path from index.html
+        // Relatív útvonal visszaadása
         echo json_encode(['url' => 'img/' . $filename]);
     } else {
         http_response_code(500);
-        echo json_encode(['error' => 'Failed to save file']);
+        echo json_encode(['error' => 'Fájl mentése sikertelen']);
     }
     exit;
 }
@@ -1027,7 +1030,7 @@ if ($method === 'GET') {
 
     if ($json === null) {
         http_response_code(400);
-        echo json_encode(['error' => 'Invalid JSON']);
+        echo json_encode(['error' => 'Érvénytelen JSON']);
     } else {
         if (isset($json['questions'])) {
             file_put_contents($questionsFile, json_encode($json['questions']));
@@ -1043,23 +1046,25 @@ if ($method === 'GET') {
     }
 } else {
     http_response_code(405);
-    echo json_encode(['error' => 'Method not allowed']);
+    echo json_encode(['error' => 'A metódus nem engedélyezett']);
 }
 ?>`;
 
 const SERVER_CODE_HTACCESS_PHP = `<IfModule mod_rewrite.c>
 RewriteEngine On
-RewriteBase /naplo/
 
-# Route API calls to api.php
+# Ha alkönyvtárban (pl. /naplo/) fut, vedd ki a kommentet az alábbi sorból:
+# RewriteBase /naplo/
+
+# API hívások irányítása az api.php felé
 RewriteRule ^api/(.*)$ api.php [L,QSA]
 
-# Serve files
+# Meglévő fájlok és könyvtárak közvetlen kiszolgálása
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# Route everything else to index.html
+# Minden más kérés irányítása az index.html-re (kliens oldali routing)
 RewriteRule ^ index.html [L]
 </IfModule>`;
 

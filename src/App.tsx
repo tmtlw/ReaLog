@@ -5,7 +5,7 @@ import {
   Plus, Trash2, Save, X, ChevronRight, Layout, RefreshCw,
   Image as ImageIcon, Cloud, Calendar, List, Grid as GridIcon,
   Smile, Settings, Info, Server, MapPin, Eye, EyeOff, Palette, Search, ChevronLeft, Map as MapIcon,
-  ThermometerSun, Menu, Code, LogOut, CheckCircle2, AlertCircle, CloudLightning, HardDrive,
+  ThermometerSun, Menu, Code, LogOut, CheckCircle2, AlertCircle, CloudLightning, HardDrive, CalendarClock,
   Wifi, WifiOff, Database, Activity, ChevronUp, Terminal, Copy, FileText, FileCode, User,
   Globe, Images, Layers, Shield, ShieldAlert, Clock, Bold, Italic, Underline, Link as LinkIcon, AlignLeft,
   Trophy, PieChart, Dices,
@@ -16,6 +16,7 @@ import { CATEGORY_LABELS, DEMO_PASSWORD, INITIAL_DATA, DEFAULT_QUESTIONS, CATEGO
 import * as StorageService from './services/storage';
 import { getTranslation } from './services/i18n';
 import { THEMES, getHolidayTheme, HOLIDAY_THEMES, generateCustomTheme } from './constants/theme';
+import { stringToColor, stringToBgColor } from './utils/colors';
 
 // Components
 import Navbar from './components/layout/Navbar';
@@ -51,12 +52,29 @@ const DynamicIcon = ({ name, className }: { name: string, className?: string }) 
 };
 
 export default function App() {
-  const [data, setData] = useState<AppData>(INITIAL_DATA);
+  // Load data synchronously to prevent layout/font flash
+  const [data, setData] = useState<AppData>(() => {
+      const local = StorageService.loadData();
+      if (local) {
+          return {
+              ...INITIAL_DATA,
+              ...local,
+              settings: { ...INITIAL_DATA.settings, ...(local.settings || {}) },
+              questions: local.questions || INITIAL_DATA.questions
+          };
+      }
+      return INITIAL_DATA;
+  });
+
   const [activeCategory, setActiveCategory] = useState<Category>(Category.DAILY);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAppLoading, setIsAppLoading] = useState(true);
   
-  const [currentTheme, setCurrentTheme] = useState<ThemeOption>('dark');
+  const [currentTheme, setCurrentTheme] = useState<ThemeOption>(() => {
+      // Try to get theme from loaded data
+      const local = StorageService.loadData();
+      return local?.settings?.theme || 'dark';
+  });
   const [themeClasses, setThemeClasses] = useState(THEMES.dark);
   const [logoEmoji, setLogoEmoji] = useState<string | null>(null);
   const [holidayName, setHolidayName] = useState<string | null>(null);
@@ -124,10 +142,7 @@ export default function App() {
         setIsAppLoading(true);
         const local = StorageService.loadData();
         
-        // Restore Theme from local cache initially to prevent flash
-        if (local.settings?.theme) {
-            setCurrentTheme(local.settings.theme);
-        }
+        // Theme is already initialized in useState
         
         // Restore Auth
         if (StorageService.checkAuthSession()) {
@@ -369,10 +384,33 @@ export default function App() {
       if (activeCategory === Category.MONTHLY) label = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}`;
       if (activeCategory === Category.YEARLY) label = `${today.getFullYear()}`;
 
-      // Initialize responses with active questions to ensure they appear
-      const activeQuestions = data.questions.filter(q => q.category === activeCategory && q.isActive);
+      // Initialize responses based on priority: Default Template -> Active Questions -> Random 4
+      let selectedQuestions: typeof data.questions = [];
+
+      // 1. Try Default Template
+      const defaultTemplate = data.templates?.find(t => t.category === activeCategory && t.isDefault);
+      if (defaultTemplate) {
+          selectedQuestions = data.questions.filter(q =>
+              q.category === activeCategory && defaultTemplate.questions.includes(q.text)
+          );
+      }
+
+      // 2. If no template applied, try Active Questions
+      if (selectedQuestions.length === 0) {
+          selectedQuestions = data.questions.filter(q => q.category === activeCategory && q.isActive);
+      }
+
+      // 3. Fallback: Random 4
+      if (selectedQuestions.length === 0) {
+          const allCategoryQuestions = data.questions.filter(q => q.category === activeCategory);
+          if (allCategoryQuestions.length > 0) {
+              const shuffled = [...allCategoryQuestions].sort(() => 0.5 - Math.random());
+              selectedQuestions = shuffled.slice(0, 4);
+          }
+      }
+
       const initialResponses: Record<string, string> = {};
-      activeQuestions.forEach(q => initialResponses[q.id] = "");
+      selectedQuestions.forEach(q => initialResponses[q.id] = "");
 
       setCurrentEntry({
           id: crypto.randomUUID(),
@@ -546,7 +584,7 @@ export default function App() {
           entries = entries.filter(e => 
               e.title?.toLowerCase().includes(q) ||
               e.location?.toLowerCase().includes(q) ||
-              e.tags?.some(t => t.toLowerCase().includes(q)) ||
+              e.tags?.some(t => t.toLowerCase().includes(q) || `#${t.toLowerCase()}`.includes(q)) ||
               e.freeTextContent?.toLowerCase().includes(q) ||
               Object.values(e.responses).some((r: any) => typeof r === 'string' && r.toLowerCase().includes(q))
           );
@@ -554,6 +592,18 @@ export default function App() {
 
       return entries.sort((a, b) => b.timestamp - a.timestamp);
   }, [data.entries, activeCategory, globalView, searchQuery, isAdmin, data.settings]);
+
+  // On This Day Logic for Dashboard Card
+  const onThisDayEntries = useMemo(() => {
+        if (globalView !== 'none') return [];
+        const today = new Date();
+        const md = `${today.getMonth()+1}-${today.getDate()}`;
+        // Filter entries from previous years on this day
+        return data.entries.filter(e => {
+            const d = new Date(e.timestamp);
+            return `${d.getMonth()+1}-${d.getDate()}` === md && d.getFullYear() !== today.getFullYear() && !e.isTrashed && (!e.isPrivate || isAdmin);
+        }).sort((a,b) => b.timestamp - a.timestamp);
+  }, [data.entries, globalView, isAdmin]);
 
   const visibleEntries = filteredEntriesAll.slice(0, visibleCount);
 
@@ -635,9 +685,22 @@ export default function App() {
   const renderTags = (e: Entry) => (
       e.tags && e.tags.length > 0 ? (
           <div className="flex flex-wrap gap-2 mb-6">
-              {e.tags.map(tag => (
-                  <button key={tag} onClick={() => { setSearchQuery(`#${tag}`); setSelectedEntry(null); }} className={`text-xs font-bold px-2 py-1 rounded bg-black/10 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-colors`}>#{tag}</button>
-              ))}
+              {e.tags.map(tag => {
+                  const isDarkTheme = themeClasses.bg.includes('black') || themeClasses.bg.includes('9') || themeClasses.bg.includes('dark');
+                  return (
+                    <button
+                        key={tag}
+                        onClick={() => { setSearchQuery(`#${tag}`); setSelectedEntry(null); }}
+                        className={`text-xs font-bold px-2 py-1 rounded transition-transform hover:scale-105`}
+                        style={{
+                            backgroundColor: stringToBgColor(tag, isDarkTheme ? 'dark' : 'light'),
+                            color: stringToColor(tag, isDarkTheme ? 'dark' : 'light')
+                        }}
+                    >
+                        #{tag}
+                    </button>
+                  );
+              })}
           </div>
       ) : null
   );
@@ -729,6 +792,7 @@ export default function App() {
                       themeClasses={themeClasses} 
                       showAll={true} 
                       emojiStyle={emojiStyle} 
+                      fixPosition={true}
                   />
               </div>
           </div>
@@ -744,7 +808,7 @@ export default function App() {
   // --- Render ---
   
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${themeClasses.bg} ${themeClasses.text} font-sans selection:bg-emerald-500/30 flex flex-col`}>
+    <div className={`min-h-screen transition-colors duration-300 ${themeClasses.bg} ${themeClasses.text} selection:bg-emerald-500/30 flex flex-col`}>
         {/* Modals */}
         {showAuthModal && (
             <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
@@ -801,16 +865,17 @@ export default function App() {
                    
                    <div className="p-6 md:p-8">
                         {getLayout().map(part => {
+                            let content = null;
                             switch(part) {
-                                case 'header': return renderHeader(selectedEntry);
-                                case 'mood': return renderMood(selectedEntry);
-                                case 'tags': return renderTags(selectedEntry);
-                                case 'content': return renderContent(selectedEntry);
-                                case 'habits': return renderHabits(selectedEntry);
-                                case 'gallery': return renderGallery(selectedEntry);
-                                case 'map': return renderMap(selectedEntry);
-                                default: return null;
+                                case 'header': content = renderHeader(selectedEntry); break;
+                                case 'mood': content = renderMood(selectedEntry); break;
+                                case 'tags': content = renderTags(selectedEntry); break;
+                                case 'content': content = renderContent(selectedEntry); break;
+                                case 'habits': content = renderHabits(selectedEntry); break;
+                                case 'gallery': content = renderGallery(selectedEntry); break;
+                                case 'map': content = renderMap(selectedEntry); break;
                             }
+                            return content ? <React.Fragment key={part}>{content}</React.Fragment> : null;
                         })}
                    </div>
 
@@ -860,9 +925,30 @@ export default function App() {
             currentStreak={0} 
             logoEmoji={logoEmoji}
             greeting={getGreeting()} 
+            setSearchQuery={setSearchQuery}
         />
 
         <main className="flex-1 max-w-6xl mx-auto w-full p-4 pb-24">
+            {/* On This Day Card */}
+            {onThisDayEntries.length > 0 && globalView === 'none' && !isEditing && (
+                <div className="mb-6 animate-fade-in">
+                    <div className={`p-4 rounded-xl border flex flex-col md:flex-row gap-4 items-center justify-between ${themeClasses.card} bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border-emerald-500/20`}>
+                        <div className="flex items-center gap-3">
+                            <div className="p-3 rounded-full bg-emerald-500/20 text-emerald-500">
+                                <CalendarClock className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-lg">{t('nav.on_this_day')}</h3>
+                                <p className="text-sm opacity-60">{onThisDayEntries.length} {t('app.entries_found')}</p>
+                            </div>
+                        </div>
+                        <Button onClick={() => setGlobalView('onThisDay')} themeClasses={themeClasses} variant="secondary">
+                            {t('common.view')}
+                        </Button>
+                    </div>
+                </div>
+            )}
+
             {isAppLoading ? (
                 <div className="flex flex-col items-center justify-center h-64 opacity-50">
                     <RefreshCw className="w-8 h-8 animate-spin mb-4" />
