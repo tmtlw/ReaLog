@@ -6,7 +6,7 @@ import {
   Image as ImageIcon, Cloud, Calendar, List, Grid as GridIcon,
   Smile, Settings, Info, Server, MapPin, Eye, EyeOff, Palette, Search, ChevronLeft, Map as MapIcon,
   ThermometerSun, Menu, Code, LogOut, CheckCircle2, AlertCircle, CloudLightning, HardDrive, CalendarClock,
-  Wifi, WifiOff, Database, Activity, ChevronUp, Terminal, Copy, FileText, FileCode, User,
+  Wifi, WifiOff, Database, Activity, ChevronUp, Terminal, Copy, FileText, FileCode, User as UserIcon,
   Globe, Images, Layers, Shield, ShieldAlert, Clock, Bold, Italic, Underline, Link as LinkIcon, AlignLeft,
   Trophy, PieChart, Dices,
   Droplets, Moon, Sun, DollarSign, Briefcase, Heart, Brain, Music, Leaf, Coffee, Utensils, Zap, Award, Target, Flag, Bike, Dumbbell, Footprints, Bed, ShowerHead, Timer, Watch, Smartphone, Laptop, Gamepad2, ShoppingCart, Home, Car, Plane, Brush, Camera, Headphones, Gift, Star, Frown, Users, Phone, Mail, Edit2, Hash
@@ -21,6 +21,7 @@ import { stringToColor, stringToBgColor } from './utils/colors';
 // Components
 import Navbar from './components/layout/Navbar';
 import StatusBar from './components/layout/StatusBar';
+import DashboardView from './components/views/DashboardView';
 import EntryList from './components/views/EntryList';
 import CalendarView from './components/views/CalendarView';
 import AtlasView from './components/views/AtlasView';
