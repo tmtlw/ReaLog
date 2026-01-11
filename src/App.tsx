@@ -5,7 +5,7 @@ import {
   Plus, Trash2, Save, X, ChevronRight, Layout, RefreshCw,
   Image as ImageIcon, Cloud, Calendar, List, Grid as GridIcon,
   Smile, Settings, Info, Server, MapPin, Eye, EyeOff, Palette, Search, ChevronLeft, Map as MapIcon,
-  ThermometerSun, Menu, Code, LogOut, CheckCircle2, AlertCircle, CloudLightning, HardDrive,
+  ThermometerSun, Menu, Code, LogOut, CheckCircle2, AlertCircle, CloudLightning, HardDrive, CalendarClock,
   Wifi, WifiOff, Database, Activity, ChevronUp, Terminal, Copy, FileText, FileCode, User,
   Globe, Images, Layers, Shield, ShieldAlert, Clock, Bold, Italic, Underline, Link as LinkIcon, AlignLeft,
   Trophy, PieChart, Dices,
