@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { AppData, Entry, WidgetConfig, User, WeatherIconPack, EmojiStyle } from '../../types';
 import { DEFAULT_WIDGETS } from '../../constants';
@@ -10,24 +9,24 @@ import { Users, Activity } from 'lucide-react';
 
 interface DashboardProps {
     data: AppData;
-    currentUser: User | null;
     themeClasses: any;
     t: (key: string, params?: any) => string;
     onSelectEntry: (e: Entry) => void;
     isAdmin: boolean;
     weatherPack: WeatherIconPack;
     emojiStyle: EmojiStyle;
+    currentUser: User | null;
 }
 
 export default function DashboardView({
     data,
-    currentUser,
     themeClasses,
     t,
     onSelectEntry,
     isAdmin,
     weatherPack,
-    emojiStyle
+    emojiStyle,
+    currentUser
 }: DashboardProps) {
 
     const widgets = data.dashboardWidgets || DEFAULT_WIDGETS;
@@ -110,7 +109,6 @@ export default function DashboardView({
                     t={t}
                     weatherPack={weatherPack}
                     emojiStyle={emojiStyle}
-                    users={data.users}
                 />
             </div>
         </div>

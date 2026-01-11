@@ -1010,13 +1010,13 @@ export default function App() {
             ) : globalView === 'dashboard' ? (
                 <DashboardView
                     data={data}
-                    currentUser={currentUser}
                     themeClasses={themeClasses}
                     t={t}
                     onSelectEntry={setSelectedEntry}
                     isAdmin={isAdmin}
                     weatherPack={weatherPack}
                     emojiStyle={emojiStyle}
+                    currentUser={currentUser}
                 />
             ) : globalView === 'stats' ? (
                 <StatsView 
