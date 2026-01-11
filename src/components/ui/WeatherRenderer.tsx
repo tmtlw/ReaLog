@@ -163,6 +163,20 @@ const WeatherRenderer: React.FC<WeatherRendererProps> = ({ data, pack = 'outline
         }
     }
 
+    // 11. Real (OpenWeatherMap Images)
+    if (pack === 'real') {
+        let iconCode = '02d';
+        switch(category) {
+            case 'Clear': iconCode = isNight ? '01n' : '01d'; break;
+            case 'Clouds': iconCode = isNight ? '04n' : '04d'; break;
+            case 'Rain': iconCode = isNight ? '10n' : '10d'; break;
+            case 'Snow': iconCode = isNight ? '13n' : '13d'; break;
+            case 'Storm': iconCode = isNight ? '11n' : '11d'; break;
+            case 'Mist': iconCode = isNight ? '50n' : '50d'; break;
+        }
+        return <img src={`https://openweathermap.org/img/wn/${iconCode}@2x.png`} alt={category} className={className} />;
+    }
+
     return null;
 };
 

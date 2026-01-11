@@ -51,15 +51,47 @@ const EMOJI_STYLES: Record<string, React.CSSProperties> = {
     'glitch': {
         textShadow: '2px 0 #ff0000, -2px 0 #00ffff',
         filter: 'contrast(120%)'
-    }
+    },
+    'twemoji': {},
+    'blob': {}
 };
 
 export const getEmojiStyleObject = (style: EmojiStyle): React.CSSProperties => {
     return EMOJI_STYLES[style] || {};
 };
 
+// Helper for converting emoji to unicode hex sequence
+const toCodePoint = (unicodeSurrogates: string, sep?: string) => {
+  const r = [];
+  let c = 0;
+  let p = 0;
+  let i = 0;
+  while (i < unicodeSurrogates.length) {
+    c = unicodeSurrogates.charCodeAt(i++);
+    if (p) {
+      r.push((0x10000 + ((p - 0xD800) << 10) + (c - 0xDC00)).toString(16));
+      p = 0;
+    } else if (0xD800 <= c && c <= 0xDBFF) {
+      p = c;
+    } else {
+      r.push(c.toString(16));
+    }
+  }
+  return r.join(sep || '-');
+};
+
 const EmojiRenderer: React.FC<EmojiRendererProps> = ({ emoji, style = 'native', className = "", onClick }) => {
     if (!emoji) return null;
+
+    // Image based emojis
+    if (style === 'twemoji') {
+        const code = toCodePoint(emoji);
+        return <img src={`https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/${code}.svg`} alt={emoji} className={`${className} w-[1em] h-[1em] inline-block align-middle`} onClick={onClick} loading="lazy" />;
+    }
+    if (style === 'blob') {
+        const code = toCodePoint(emoji, '_');
+        return <img src={`https://cdn.jsdelivr.net/gh/C1710/blobmoji/png/128/emoji_u${code}.png`} alt={emoji} className={`${className} w-[1em] h-[1em] inline-block align-middle`} onClick={onClick} loading="lazy" onError={(e) => { e.currentTarget.style.display='none'; }} />;
+    }
 
     // Determine the base styles
     const baseStyle = EMOJI_STYLES[style] || {};
