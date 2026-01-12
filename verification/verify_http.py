@@ -44,6 +44,9 @@ def verify_dashboard():
                 page.wait_for_selector("text=ReaLog", timeout=3000)
                 print("Login Screen detected.")
 
+                print("Entering username...")
+                page.fill("input[data-testid='username-input']", "Admin")
+
                 print("Entering password...")
                 page.fill("input[data-testid='password-input']", "grind")
 

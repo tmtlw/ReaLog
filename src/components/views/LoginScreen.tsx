@@ -13,38 +13,27 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin, themeClasses, t }) => {
-    const [selectedUserId, setSelectedUserId] = useState<string>(users.length > 0 ? users[0].id : '');
+    // If only one user exists, maybe pre-fill?
+    // But strict "type username" requirement suggests we should let them type.
+    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-
-    // Update selection if users load asynchronously (e.g. migration)
-    React.useEffect(() => {
-        if (!selectedUserId && users.length > 0) {
-            setSelectedUserId(users[0].id);
-        }
-    }, [users, selectedUserId]);
 
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
-        const user = users.find(u => u.id === selectedUserId);
+        const user = users.find(u => u.name.trim().toLowerCase() === username.trim().toLowerCase());
+
         if (!user) {
-            setError(t('app.user_not_found'));
+            setError(t('app.user_not_found') || 'Felhasználó nem található');
             return;
         }
 
-        // Check password
-        // If user has no password set (migration), allow empty or any password?
-        // Better: require default password "admin" or match DEMO_PASSWORD if user is admin
-        // For now, simple strict check if password field exists.
-
         const expected = user.password;
 
-        // If legacy user without password, maybe use a default or allow access
+        // Legacy/Default password handling
         if (!expected) {
-             // For legacy migration: if no password set, we might allow it or require setting one.
-             // Let's assume for now we auto-migrate or use a default.
              if (password === DEMO_PASSWORD || password === 'admin' || password === 'grind') {
                  onLogin(user);
                  return;
@@ -74,29 +63,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin, themeC
 
                 <form onSubmit={handleLogin} className="space-y-6">
                     <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider opacity-70 mb-2">Felhasználó</label>
-                        <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
-                            {users.map(u => (
-                                <div
-                                    key={u.id}
-                                    onClick={() => { setSelectedUserId(u.id); setError(''); }}
-                                    className={`p-3 rounded-lg border cursor-pointer flex items-center gap-3 transition-all ${
-                                        selectedUserId === u.id
-                                        ? `${themeClasses.primaryBtn} border-transparent shadow-md transform scale-[1.02]`
-                                        : 'bg-white/5 border-transparent hover:bg-white/10'
-                                    }`}
-                                >
-                                    <div
-                                        className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shadow-sm bg-black/20"
-                                        style={{ backgroundColor: u.color }}
-                                    >
-                                        {u.avatar || u.name.charAt(0)}
-                                    </div>
-                                    <span className="font-medium">{u.name}</span>
-                                    {selectedUserId === u.id && <div className="ml-auto w-2 h-2 rounded-full bg-white animate-pulse" />}
-                                </div>
-                            ))}
-                        </div>
+                        <label className="block text-xs font-bold uppercase tracking-wider opacity-70 mb-2">Felhasználónév</label>
+                        <Input
+                            data-testid="username-input"
+                            type="text"
+                            value={username}
+                            onChange={(e: any) => setUsername(e.target.value)}
+                            placeholder="Felhasználónév"
+                            themeClasses={themeClasses}
+                            className="w-full"
+                            autoFocus
+                        />
                     </div>
 
                     <div>
@@ -109,7 +86,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin, themeC
                             placeholder="Jelszó"
                             themeClasses={themeClasses}
                             className="w-full"
-                            autoFocus
                         />
                     </div>
 

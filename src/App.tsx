@@ -438,6 +438,7 @@ export default function App() {
 
       setCurrentEntry({
           id: crypto.randomUUID(),
+          userId: currentUser?.id,
           timestamp: Date.now(),
           category: activeCategory,
           dateLabel: label,
@@ -505,6 +506,7 @@ export default function App() {
       const newEntry: Partial<Entry> = {
           ...e,
           id: crypto.randomUUID(),
+          userId: currentUser?.id,
           timestamp: Date.now(), // Set to now for the new copy
           dateLabel: new Date().toISOString().slice(0, 10), // Update label to today
           isDraft: true,
