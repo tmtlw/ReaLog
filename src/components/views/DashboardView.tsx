@@ -29,7 +29,7 @@ export default function DashboardView({
     currentUser
 }: DashboardProps) {
 
-    const widgets = data.dashboardWidgets || DEFAULT_WIDGETS;
+    const widgets = data.dashboardWidgets || DEFAULT_WIDGETS || [];
 
     // Ezen a napon bejegyzések (mindenkié)
     const today = new Date();
