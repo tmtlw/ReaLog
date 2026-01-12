@@ -83,6 +83,8 @@ const hu = {
         wmo_99: 'Zivatar jégesővel (erős)'
     },
     nav: {
+        dashboard: 'Főoldal',
+        dashboard_short: 'Főoldal',
         map: 'Térkép',
         gallery: 'Galéria',
         tags: 'Címkék',
@@ -313,6 +315,7 @@ const hu = {
         password: 'Jelszó',
         login_btn: 'Belépés',
         login_subtitle: 'Add meg a jelszót a szerkesztéshez.',
+        user_not_found: 'Felhasználó nem található',
         cloud_tags: 'Címkefelhő',
         no_tags: 'Nincsenek címkék. Használd a #szó formátumot a bejegyzéseidben!',
         entries_with_tag: 'Bejegyzések ezzel a címkével:',

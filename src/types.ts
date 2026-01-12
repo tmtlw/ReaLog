@@ -46,8 +46,25 @@ export interface WeatherData {
   icon?: string;
 }
 
+export interface User {
+    id: string;
+    name: string;
+    password?: string; // Optional for backward compatibility, but required for new users
+    avatar?: string;
+    color?: string;
+    isAdmin?: boolean;
+}
+
+export interface WidgetConfig {
+    id: string;
+    type: 'stats' | 'onThisDay' | 'recent' | 'activeUsers';
+    order: number;
+    isEnabled: boolean;
+}
+
 export interface Entry {
   id: string;
+  userId?: string;
   notebookId?: string;
   timestamp: number;
   dateLabel: string;
@@ -147,6 +164,8 @@ export interface AppSettings {
 }
 
 export interface AppData {
+  users?: User[];
+  dashboardWidgets?: WidgetConfig[];
   questions: Question[];
   habits?: Habit[];
   entries: Entry[];

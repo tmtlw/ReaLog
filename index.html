@@ -159,6 +159,15 @@
         './src/components/views/StreakView.tsx',
         './src/components/views/QuoteWidget.tsx',
         
+        // Dashboard Widgets (Dependencies of DashboardView)
+        './src/components/dashboard/WidgetWrapper.tsx',
+        './src/components/dashboard/StatsWidget.tsx',
+        './src/components/dashboard/OnThisDayWidget.tsx',
+
+        // Dashboard View
+        './src/components/views/DashboardView.tsx',
+        './src/components/views/LoginScreen.tsx',
+
         // Modals
         './src/components/modals/ExportModal.tsx',
         './src/components/modals/SettingsModal.tsx',
@@ -175,7 +184,9 @@
         './src/components/settings/SettingsAccountTab.tsx',
         './src/components/settings/SettingsCloudTab.tsx',
         './src/components/settings/SettingsDataTab.tsx',
-        './src/components/settings/SettingsAboutTab.tsx'
+        './src/components/settings/SettingsAboutTab.tsx',
+        './src/components/settings/SettingsUsersTab.tsx',
+        './src/components/settings/SettingsDashboardTab.tsx'
       ];
 
       function updateStatus(msg, detail = "") {
