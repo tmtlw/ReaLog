@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { User } from '../../types';
 import { Button, Input } from '../ui';
 import { User as UserIcon, Plus, Trash2, Shield, Lock, Edit2 } from 'lucide-react';
+import { hashPassword } from '../../utils/crypto';
 
 interface Props {
     users: User[];
@@ -19,13 +20,14 @@ const SettingsUsersTab: React.FC<Props> = ({ users, onUpdateUsers, themeClasses,
     const [editingUserId, setEditingUserId] = useState<string | null>(null);
     const [editPassword, setEditPassword] = useState("");
 
-    const handleAddUser = () => {
+    const handleAddUser = async () => {
         if (!newName.trim()) return;
+        const hashedPassword = newPassword ? await hashPassword(newPassword) : undefined;
         const newUser: User = {
             id: crypto.randomUUID(),
             name: newName,
             color: newColor,
-            password: newPassword || undefined, // Optional if empty, but recommended
+            password: hashedPassword,
             isAdmin: false
         };
         onUpdateUsers([...users, newUser]);
@@ -40,13 +42,14 @@ const SettingsUsersTab: React.FC<Props> = ({ users, onUpdateUsers, themeClasses,
         }
     };
 
-    const handleUpdatePassword = (id: string) => {
+    const handleUpdatePassword = async (id: string) => {
         if (!editPassword.trim()) {
             alert("A jelszó nem lehet üres!");
             return;
         }
+        const hashedPassword = await hashPassword(editPassword);
         const updatedUsers = users.map(u =>
-            u.id === id ? { ...u, password: editPassword } : u
+            u.id === id ? { ...u, password: hashedPassword } : u
         );
         onUpdateUsers(updatedUsers);
         setEditingUserId(null);

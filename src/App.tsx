@@ -17,6 +17,7 @@ import * as StorageService from './services/storage';
 import { getTranslation } from './services/i18n';
 import { THEMES, getHolidayTheme, HOLIDAY_THEMES, generateCustomTheme } from './constants/theme';
 import { stringToColor, stringToBgColor } from './utils/colors';
+import { hashPassword } from './utils/crypto';
 
 // Components
 import Navbar from './components/layout/Navbar';
@@ -54,19 +55,9 @@ const DynamicIcon = ({ name, className }: { name: string, className?: string }) 
 };
 
 export default function App() {
-  // Load data synchronously to prevent layout/font flash
-  const [data, setData] = useState<AppData>(() => {
-      const local = StorageService.loadData();
-      if (local) {
-          return {
-              ...INITIAL_DATA,
-              ...local,
-              settings: { ...INITIAL_DATA.settings, ...(local.settings || {}) },
-              questions: local.questions || INITIAL_DATA.questions
-          };
-      }
-      return INITIAL_DATA;
-  });
+  // Separate Users state from User Data
+  const [users, setUsers] = useState<User[]>([]);
+  const [data, setData] = useState<AppData>(INITIAL_DATA);
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
@@ -74,11 +65,7 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAppLoading, setIsAppLoading] = useState(true);
   
-  const [currentTheme, setCurrentTheme] = useState<ThemeOption>(() => {
-      // Try to get theme from loaded data
-      const local = StorageService.loadData();
-      return local?.settings?.theme || 'dark';
-  });
+  const [currentTheme, setCurrentTheme] = useState<ThemeOption>('dark');
   const [themeClasses, setThemeClasses] = useState(THEMES.dark);
   const [logoEmoji, setLogoEmoji] = useState<string | null>(null);
   const [holidayName, setHolidayName] = useState<string | null>(null);
@@ -144,111 +131,74 @@ export default function App() {
   useEffect(() => {
     const init = async () => {
         setIsAppLoading(true);
-        const local = StorageService.loadData();
         
-        // Theme is already initialized in useState
+        // 1. Load Users
+        let loadedUsers = StorageService.loadUsers();
         
-        // Migration: Create default user if none exists
-        if (!local?.users || local.users.length === 0) {
-             console.log("Migrating legacy data to single user structure...");
-             const defaultUser: User = {
-                 id: crypto.randomUUID(),
-                 name: local.settings?.userName || 'Admin',
+        // 2. Migration: Check legacy single file data
+        if (loadedUsers.length === 0 && StorageService.hasLegacyData()) {
+             console.log("Migrating legacy data to separated structure...");
+             const adminId = crypto.randomUUID();
+             const password = await hashPassword('grind'); // Encrypt default password
+             const admin: User = {
+                 id: adminId,
+                 name: 'Admin', // Default name
                  isAdmin: true,
                  color: '#10b981',
-                 password: 'grind',
+                 password: password,
                  avatar: 'A'
              };
 
-             // Update entries to belong to this user
-             const migratedEntries = local.entries.map((e: Entry) => ({
-                 ...e,
-                 userId: e.userId || defaultUser.id
-             }));
+             // Move data to admin folder
+             StorageService.migrateToMultiUser(adminId);
 
-             const migratedData = {
-                 ...local,
-                 users: [defaultUser],
-                 entries: migratedEntries
-             };
-
-             // Update state and persist immediately
-             setData(migratedData as AppData);
-             StorageService.saveData(migratedData as AppData);
-
-             // If server mode is pending, we should update that too later, but local first
+             // Save users
+             loadedUsers = [admin];
+             StorageService.saveUsers(loadedUsers);
         }
 
+        setUsers(loadedUsers);
+
+        // Check Server
         const status = await StorageService.checkServerStatus();
         if (status.online) {
             setServerMode(true);
-            setSyncStatus('syncing');
-            const serverData = await StorageService.serverLoad();
-            if (serverData) {
-                setData(serverData);
-                setSyncStatus('success');
-                setLastSyncTime(Date.now());
-                setSystemMessage("");
-                setIsAppLoading(false);
-            } else {
-                setSystemMessage(t('server.empty_response'));
-                setData(local);
-                setIsAppLoading(false);
+            const serverUsers = await StorageService.serverLoadUsers();
+            if (serverUsers && serverUsers.length > 0) {
+                setUsers(serverUsers);
             }
-        } else {
-             // Cloud Check
-             if (local.settings?.cloud?.enabled && local.settings.cloud.url) {
-                 setSyncStatus('syncing');
-                 try {
-                     const cloudData = await StorageService.cloudLoad(local.settings.cloud);
-                     if (cloudData) {
-                         setData(cloudData); // Source of truth
-                         setSyncStatus('success');
-                         setLastSyncTime(Date.now());
-                     } else {
-                         setData(local);
-                     }
-                 } catch (e) {
-                     setSystemMessage(t('server.network_error'));
-                     setData(local);
-                 }
-             } else {
-                 setData(local);
-             }
-             setIsAppLoading(false);
         }
 
-        // Setup Auto Sync
-        StorageService.setupBackgroundSync(
-            () => setSyncStatus('auto_syncing'),
-            (success) => setSyncStatus(success ? 'auto_success' : 'error')
-        );
+        setIsAppLoading(false);
     };
     init();
   }, []);
 
   // --- Data Saving ---
+  // Save Users (Admin Only) - Triggered when users state changes?
+  // Better to explicit save in Settings handler.
+  // But here we handle Current User Data auto-save
   useEffect(() => {
-      if (isAdmin) {
-          StorageService.saveData(data);
+      if (currentUser && !isAppLoading) {
+          // Save Local
+          StorageService.saveUserData(currentUser.id, data);
+
+          // Auto Sync Server
+          if (serverMode) {
+              const timeout = setTimeout(() => {
+                  setSyncStatus('auto_syncing');
+                  StorageService.serverSaveUserData(currentUser.id, data)
+                      .then(() => {
+                          setSyncStatus('auto_success');
+                          setLastSyncTime(Date.now());
+                          setSystemMessage("");
+                      })
+                      .catch(() => setSyncStatus('error'));
+              }, 2000);
+              return () => clearTimeout(timeout);
+          }
       }
-      
-      if(isAppLoading) return;
-      
-      if (serverMode && isAdmin) {
-          const timeout = setTimeout(() => {
-              setSyncStatus('auto_syncing');
-              StorageService.serverSave(data)
-                  .then(() => {
-                      setSyncStatus('auto_success');
-                      setLastSyncTime(Date.now());
-                      setSystemMessage("");
-                  })
-                  .catch(() => setSyncStatus('error'));
-          }, 2000);
-          return () => clearTimeout(timeout);
-      }
-  }, [data, serverMode, isAppLoading, isAdmin]);
+  }, [data, currentUser, isAppLoading, serverMode]);
 
   // --- Theme Handling ---
   useEffect(() => {
@@ -352,21 +302,36 @@ export default function App() {
   // --- Handlers --- (Same as previous + new ones)
 
   const handleStorageModeSwitch = async (mode: 'server' | 'local') => {
+      // Simplification: In multi-user, checking server status updates mode
       if (mode === 'server') {
           const status = await StorageService.checkServerStatus();
           if (!status.online) throw new Error(status.message);
           setServerMode(true);
-          const sData = await StorageService.serverLoad();
-          if (sData) setData(prev => ({...sData, settings: {...prev.settings, ...sData.settings}}));
       } else {
           setServerMode(false);
       }
   };
 
-  const handleUserLogin = (user: User) => {
+  const handleUserLogin = async (user: User) => {
       setCurrentUser(user);
       setIsAdmin(!!user.isAdmin);
-      // Optional: Persist session if needed, but request implied strict session per load
+
+      // Load Data
+      let userData;
+      if (serverMode) {
+          userData = await StorageService.serverLoadUserData(user.id);
+      }
+      if (!userData) {
+          userData = StorageService.loadUserData(user.id);
+      }
+
+      // Inject Users List into AppData for Dashboard
+      setData({ ...userData, users: users });
+
+      // Load theme from user settings
+      if (userData.settings?.theme) {
+          setCurrentTheme(userData.settings.theme);
+      }
   };
 
   const handleLogout = () => {
@@ -374,7 +339,19 @@ export default function App() {
       setIsAdmin(false);
       setIsEditing(false);
       setActiveTab('entries');
+      setData(INITIAL_DATA);
       StorageService.clearAuthSession();
+  };
+
+  // Update Users List (Admin)
+  const handleUpdateUsers = (newUsers: User[]) => {
+      setUsers(newUsers);
+      StorageService.saveUsers(newUsers);
+      if (serverMode) {
+          StorageService.serverSaveUsers(newUsers);
+      }
+      // Also update current data context
+      setData(prev => ({ ...prev, users: newUsers }));
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -842,7 +819,7 @@ export default function App() {
   if (!currentUser && !isAppLoading) {
       return (
           <LoginScreen
-              users={data.users || []}
+              users={users}
               onLogin={handleUserLogin}
               themeClasses={themeClasses}
               t={t}
@@ -855,7 +832,7 @@ export default function App() {
         {/* Modals */}
 
         {showExportModal && <ExportModal onClose={() => setShowExportModal(false)} data={data} onImport={handleImport} themeClasses={themeClasses} currentTheme={currentTheme} t={t} />}
-        {showSettingsModal && <SettingsModal onClose={() => setShowSettingsModal(false)} data={data} setData={setData} themeClasses={themeClasses} currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} t={t} initialTab={settingsTab} />}
+        {showSettingsModal && <SettingsModal onClose={() => setShowSettingsModal(false)} data={data} setData={setData} themeClasses={themeClasses} currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} t={t} initialTab={settingsTab} onUpdateUsers={handleUpdateUsers} />}
         {showDeployModal && <DeployModal onClose={() => setShowDeployModal(false)} themeClasses={themeClasses} t={t} />}
         {showThemeEditor && <ThemeEditorModal onClose={() => setShowThemeEditor(false)} data={data} setData={setData} currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} themeClasses={themeClasses} t={t} />}
         {showStorageMenu && <StorageDebugMenu onClose={() => setShowStorageMenu(false)} onSwitchMode={handleStorageModeSwitch} serverMode={serverMode} cloudConfig={data.settings?.cloud} lastError={systemMessage} themeClasses={themeClasses} t={t} />}

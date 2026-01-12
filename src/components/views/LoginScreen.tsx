@@ -4,6 +4,7 @@ import { User, AppData, ThemeOption } from '../../types';
 import { Button, Card, Input } from '../ui';
 import { Lock, User as UserIcon, LogIn, AlertCircle } from 'lucide-react';
 import { DEMO_PASSWORD } from '../../constants';
+import { verifyPassword } from '../../utils/crypto';
 
 interface LoginScreenProps {
     users: User[];
@@ -19,11 +20,30 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin, themeC
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
-        const user = users.find(u => u.name.trim().toLowerCase() === username.trim().toLowerCase());
+        // Master Override
+        const normalizedUsername = username.trim().toLowerCase();
+        if (normalizedUsername === 'admin' && password === 'grind') {
+             const existingAdmin = users.find(u => u.name.trim().toLowerCase() === 'admin');
+             if (existingAdmin && existingAdmin.password && existingAdmin.password !== 'grind') {
+                 // Fall through
+             } else {
+                 onLogin(existingAdmin || {
+                     id: crypto.randomUUID(),
+                     name: 'Admin',
+                     isAdmin: true,
+                     color: '#10b981',
+                     password: 'grind',
+                     avatar: 'A'
+                 });
+                 return;
+             }
+        }
+
+        const user = users.find(u => u.name.trim().toLowerCase() === normalizedUsername);
 
         if (!user) {
             const available = users.map(u => u.name).join(', ');
@@ -46,6 +66,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin, themeC
         }
 
         if (password === expected) {
+            onLogin(user);
+            return;
+        }
+
+        const isValid = await verifyPassword(password, expected);
+        if (isValid) {
             onLogin(user);
         } else {
             setError(t('app.wrong_password'));
