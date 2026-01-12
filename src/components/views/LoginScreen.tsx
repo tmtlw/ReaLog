@@ -26,7 +26,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin, themeC
         const user = users.find(u => u.name.trim().toLowerCase() === username.trim().toLowerCase());
 
         if (!user) {
-            setError(t('app.user_not_found') || 'Felhasználó nem található');
+            const available = users.map(u => u.name).join(', ');
+            const errorMsg = t('app.user_not_found') || 'Felhasználó nem található';
+            setError(available ? `${errorMsg}. (Elérhető: ${available})` : errorMsg);
             return;
         }
 
