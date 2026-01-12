@@ -6,12 +6,12 @@ import { ArrowUp, ArrowDown } from 'lucide-react';
 
 interface Props {
     widgets: WidgetConfig[];
-    setWidgets: (w: WidgetConfig[]) => void;
+    onUpdateWidgets: (w: WidgetConfig[]) => void;
     themeClasses: any;
     t: (key: string) => string;
 }
 
-const SettingsDashboardTab: React.FC<Props> = ({ widgets, setWidgets, themeClasses, t }) => {
+const SettingsDashboardTab: React.FC<Props> = ({ widgets, onUpdateWidgets, themeClasses, t }) => {
     const [localList, setLocalList] = useState<WidgetConfig[]>(() => {
         if (!widgets || widgets.length === 0) return DEFAULT_WIDGETS;
         // Ensure sorting by order
@@ -20,8 +20,8 @@ const SettingsDashboardTab: React.FC<Props> = ({ widgets, setWidgets, themeClass
 
     // Update parent when local changes
     useEffect(() => {
-        setWidgets(localList);
-    }, [localList, setWidgets]);
+        onUpdateWidgets(localList);
+    }, [localList, onUpdateWidgets]);
 
     const moveUp = (index: number) => {
         if (index === 0) return;

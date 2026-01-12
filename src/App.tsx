@@ -11,7 +11,7 @@ import {
   Trophy, PieChart, Dices,
   Droplets, Moon, Sun, DollarSign, Briefcase, Heart, Brain, Music, Leaf, Coffee, Utensils, Zap, Award, Target, Flag, Bike, Dumbbell, Footprints, Bed, ShowerHead, Timer, Watch, Smartphone, Laptop, Gamepad2, ShoppingCart, Home, Car, Plane, Brush, Camera, Headphones, Gift, Star, Frown, Users, Phone, Mail, Edit2, Hash
 } from 'lucide-react';
-import { AppData, Category, Entry, WeatherData, ThemeOption, CloudConfig, CategoryConfig, PublicConfig, WeatherIconPack, EmojiStyle } from './types';
+import { AppData, Category, Entry, WeatherData, ThemeOption, CloudConfig, CategoryConfig, PublicConfig, WeatherIconPack, EmojiStyle, User } from './types';
 import { CATEGORY_LABELS, DEMO_PASSWORD, INITIAL_DATA, DEFAULT_QUESTIONS, CATEGORY_COLORS, CATEGORY_BORDER_COLORS } from './constants';
 import * as StorageService from './services/storage';
 import { getTranslation } from './services/i18n';
@@ -22,6 +22,7 @@ import { stringToColor, stringToBgColor } from './utils/colors';
 import Navbar from './components/layout/Navbar';
 import StatusBar from './components/layout/StatusBar';
 import DashboardView from './components/views/DashboardView';
+import { LoginScreen } from './components/views/LoginScreen';
 import EntryList from './components/views/EntryList';
 import CalendarView from './components/views/CalendarView';
 import AtlasView from './components/views/AtlasView';
@@ -67,10 +68,7 @@ export default function App() {
       return INITIAL_DATA;
   });
 
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-      if (data.users && data.users.length > 0) return data.users[0];
-      return null;
-  });
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const [activeCategory, setActiveCategory] = useState<Category>(Category.DAILY);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -150,9 +148,35 @@ export default function App() {
         
         // Theme is already initialized in useState
         
-        // Restore Auth
-        if (StorageService.checkAuthSession()) {
-            setIsAdmin(true);
+        // Migration: Create default user if none exists
+        if (!local?.users || local.users.length === 0) {
+             console.log("Migrating legacy data to single user structure...");
+             const defaultUser: User = {
+                 id: crypto.randomUUID(),
+                 name: local.settings?.userName || 'Admin',
+                 isAdmin: true,
+                 color: '#10b981',
+                 password: 'admin',
+                 avatar: 'A'
+             };
+
+             // Update entries to belong to this user
+             const migratedEntries = local.entries.map((e: Entry) => ({
+                 ...e,
+                 userId: e.userId || defaultUser.id
+             }));
+
+             const migratedData = {
+                 ...local,
+                 users: [defaultUser],
+                 entries: migratedEntries
+             };
+
+             // Update state and persist immediately
+             setData(migratedData as AppData);
+             StorageService.saveData(migratedData as AppData);
+
+             // If server mode is pending, we should update that too later, but local first
         }
 
         const status = await StorageService.checkServerStatus();
@@ -339,20 +363,14 @@ export default function App() {
       }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
-      e.preventDefault();
-      const currentPassword = data.settings?.adminPassword || DEMO_PASSWORD;
-      if (passwordInput === currentPassword) {
-          setIsAdmin(true);
-          setShowAuthModal(false);
-          setPasswordInput("");
-          StorageService.saveAuthSession();
-      } else {
-          alert(t('app.wrong_password'));
-      }
+  const handleUserLogin = (user: User) => {
+      setCurrentUser(user);
+      setIsAdmin(!!user.isAdmin);
+      // Optional: Persist session if needed, but request implied strict session per load
   };
 
   const handleLogout = () => {
+      setCurrentUser(null);
       setIsAdmin(false);
       setIsEditing(false);
       setActiveTab('entries');
@@ -818,34 +836,21 @@ export default function App() {
 
   // --- Render ---
   
+  // Show Login Screen if no user is authenticated
+  if (!currentUser && !isAppLoading) {
+      return (
+          <LoginScreen
+              users={data.users || []}
+              onLogin={handleUserLogin}
+              themeClasses={themeClasses}
+              t={t}
+          />
+      );
+  }
+
   return (
     <div className={`min-h-screen transition-colors duration-300 ${themeClasses.bg} ${themeClasses.text} selection:bg-emerald-500/30 flex flex-col`}>
         {/* Modals */}
-        {showAuthModal && (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
-                <Card themeClasses={themeClasses} className="w-full max-w-sm p-8 shadow-2xl relative">
-                    <button onClick={() => setShowAuthModal(false)} className="absolute top-4 right-4 opacity-50 hover:opacity-100"><X className="w-5 h-5" /></button>
-                    <div className="text-center mb-6">
-                        <div className="w-16 h-16 bg-emerald-500 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/20">
-                            <Lock className="w-8 h-8 text-white" />
-                        </div>
-                        <h2 className="text-2xl font-bold">{t('app.admin_login')}</h2>
-                        <p className={`text-sm mt-2 ${themeClasses.subtext}`}>{t('app.login_subtitle')}</p>
-                    </div>
-                    <form onSubmit={handleLogin} className="space-y-4">
-                        <Input 
-                            themeClasses={themeClasses} 
-                            type="password" 
-                            value={passwordInput} 
-                            onChange={(e: any) => setPasswordInput(e.target.value)} 
-                            placeholder={t('app.password')} 
-                            autoFocus
-                        />
-                        <Button type="submit" themeClasses={themeClasses} className="w-full">{t('app.login_btn')}</Button>
-                    </form>
-                </Card>
-            </div>
-        )}
 
         {showExportModal && <ExportModal onClose={() => setShowExportModal(false)} data={data} onImport={handleImport} themeClasses={themeClasses} currentTheme={currentTheme} t={t} />}
         {showSettingsModal && <SettingsModal onClose={() => setShowSettingsModal(false)} data={data} setData={setData} themeClasses={themeClasses} currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} t={t} initialTab={settingsTab} />}
@@ -925,7 +930,7 @@ export default function App() {
             onOpenSettings={(tab) => { if(tab) setSettingsTab(tab); setShowSettingsModal(true); }}
             onOpenThemeEditor={() => setShowThemeEditor(true)}
             onLogout={handleLogout}
-            onOpenAuth={() => setShowAuthModal(true)}
+            onOpenAuth={() => {}} // Deprecated auth modal
             onRandomEntry={pickRandomEntry}
             themeClasses={themeClasses}
             showMobileMenu={showMobileMenu}

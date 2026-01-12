@@ -49,6 +49,7 @@ export interface WeatherData {
 export interface User {
     id: string;
     name: string;
+    password?: string; // Optional for backward compatibility, but required for new users
     avatar?: string;
     color?: string;
     isAdmin?: boolean;

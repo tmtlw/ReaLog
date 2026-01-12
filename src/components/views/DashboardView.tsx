@@ -59,7 +59,7 @@ export default function DashboardView({
                     <p className="opacity-60 text-sm">{new Date().toLocaleDateString('hu-HU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
                 </div>
 
-                {widgets.sort((a,b) => a.order - b.order).map(widget => {
+                {[...widgets].sort((a,b) => a.order - b.order).map(widget => {
                     if (!widget.isEnabled) return null;
                     switch(widget.type) {
                         case 'stats':
