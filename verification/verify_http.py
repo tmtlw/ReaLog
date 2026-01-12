@@ -69,6 +69,14 @@ def verify_dashboard():
             if page.is_visible(":has-text('Statisztika')"):
                  print("Found Stats widget.")
 
+            # Check for Home button (Főoldal)
+            # It might be hidden on small screens if window size is small?
+            # Playwright default size is 1280x720, so it should be visible or "Home" text.
+            if page.is_visible("text=Főoldal"):
+                 print("Found Home button (Főoldal).")
+            else:
+                 print("Home button 'Főoldal' NOT found (maybe screen too small or text missing).")
+
             # Take success screenshot
             page.screenshot(path="verification/dashboard_http_success.png")
             print("Verification successful.")

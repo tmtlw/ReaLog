@@ -83,6 +83,8 @@ const hu = {
         wmo_99: 'Zivatar jégesővel (erős)'
     },
     nav: {
+        dashboard: 'Főoldal',
+        dashboard_short: 'Főoldal',
         map: 'Térkép',
         gallery: 'Galéria',
         tags: 'Címkék',
