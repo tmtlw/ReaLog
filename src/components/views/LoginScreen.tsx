@@ -17,6 +17,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin, themeC
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
 
+    // Update selection if users load asynchronously (e.g. migration)
+    React.useEffect(() => {
+        if (!selectedUserId && users.length > 0) {
+            setSelectedUserId(users[0].id);
+        }
+    }, [users, selectedUserId]);
+
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -95,6 +102,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin, themeC
                     <div>
                         <label className="block text-xs font-bold uppercase tracking-wider opacity-70 mb-2">{t('app.password')}</label>
                         <Input
+                            data-testid="password-input"
                             type="password"
                             value={password}
                             onChange={(e: any) => setPassword(e.target.value)}
@@ -112,7 +120,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin, themeC
                         </div>
                     )}
 
-                    <Button type="submit" themeClasses={themeClasses} className="w-full py-3 text-lg shadow-lg shadow-emerald-500/10">
+                    <Button data-testid="login-button" type="submit" themeClasses={themeClasses} className="w-full py-3 text-lg shadow-lg shadow-emerald-500/10">
                         {t('app.login_btn')} <LogIn className="w-5 h-5 ml-2" />
                     </Button>
                 </form>

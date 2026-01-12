@@ -26,6 +26,16 @@ export const DEFAULT_WIDGETS: WidgetConfig[] = [
 ];
 
 export const INITIAL_DATA: AppData = {
+  users: [
+      {
+          id: 'admin-user',
+          name: 'Admin',
+          password: 'grind',
+          isAdmin: true,
+          color: '#10b981',
+          avatar: 'A'
+      }
+  ],
   questions: DEFAULT_QUESTIONS,
   habits: DEFAULT_HABITS,
   entries: SAMPLE_ENTRIES,
