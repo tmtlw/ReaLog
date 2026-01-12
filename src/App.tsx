@@ -156,7 +156,7 @@ export default function App() {
                  name: local.settings?.userName || 'Admin',
                  isAdmin: true,
                  color: '#10b981',
-                 password: 'admin',
+                 password: 'grind',
                  avatar: 'A'
              };
 

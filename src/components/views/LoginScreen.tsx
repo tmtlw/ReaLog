@@ -38,11 +38,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin, themeC
         if (!expected) {
              // For legacy migration: if no password set, we might allow it or require setting one.
              // Let's assume for now we auto-migrate or use a default.
-             if (password === DEMO_PASSWORD || password === 'admin') {
+             if (password === DEMO_PASSWORD || password === 'admin' || password === 'grind') {
                  onLogin(user);
                  return;
              } else {
-                 setError('Helytelen jelszó (Alapértelmezett: admin)');
+                 setError('Helytelen jelszó (Alapértelmezett: grind)');
                  return;
              }
         }
