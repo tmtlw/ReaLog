@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { AppData, ThemeOption } from '../../types';
+import { User, AppData, ThemeOption } from '../../types';
 import { Button, Card } from '../ui';
 import { APP_VERSION } from '../../changelog';
 import * as StorageService from '../../services/storage';
@@ -30,8 +30,9 @@ const SettingsModal: React.FC<{
     currentTheme: ThemeOption, 
     setCurrentTheme: (t: ThemeOption) => void,
     t: (key: string) => string,
-    initialTab?: Tab
-}> = ({ onClose, data, setData, themeClasses, currentTheme, setCurrentTheme, t, initialTab = 'account' }) => {
+    initialTab?: Tab,
+    onUpdateUsers?: (users: User[]) => void
+}> = ({ onClose, data, setData, themeClasses, currentTheme, setCurrentTheme, t, initialTab = 'account', onUpdateUsers }) => {
     const [activeTab, setActiveTab] = useState<Tab>(initialTab);
     const [localSettings, setLocalSettings] = useState(data.settings || {});
     
@@ -200,7 +201,7 @@ const SettingsModal: React.FC<{
                     {activeTab === 'users' && (
                         <SettingsUsersTab
                             users={data.users || []}
-                            onUpdateUsers={(users) => setData(prev => ({ ...prev, users }))}
+                            onUpdateUsers={(users) => onUpdateUsers ? onUpdateUsers(users) : setData(prev => ({ ...prev, users }))}
                             themeClasses={themeClasses}
                             t={t}
                         />
