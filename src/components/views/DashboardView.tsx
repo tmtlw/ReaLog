@@ -102,6 +102,7 @@ export default function DashboardView({
                 <EntryList
                     viewMode="grid"
                     entries={feedEntries}
+                    habits={data.habits}
                     onSelectEntry={onSelectEntry}
                     renderActionButtons={() => null}
                     themeClasses={themeClasses}

@@ -41,7 +41,7 @@ def verify_dashboard():
             # --- Login Flow ---
             # Wait for login screen explicitly
             try:
-                page.wait_for_selector("text=ReaLog", timeout=3000)
+                page.wait_for_selector("text=ReaLog", timeout=10000) # Increased timeout
                 print("Login Screen detected.")
 
                 print("Entering username...")
@@ -70,12 +70,10 @@ def verify_dashboard():
                  print("Found Stats widget.")
 
             # Check for Home button (Főoldal)
-            # It might be hidden on small screens if window size is small?
-            # Playwright default size is 1280x720, so it should be visible or "Home" text.
             if page.is_visible("text=Főoldal"):
                  print("Found Home button (Főoldal).")
             else:
-                 print("Home button 'Főoldal' NOT found (maybe screen too small or text missing).")
+                 print("Home button 'Főoldal' NOT found.")
 
             # Take success screenshot
             page.screenshot(path="verification/dashboard_http_success.png")

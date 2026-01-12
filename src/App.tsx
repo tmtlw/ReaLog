@@ -1125,6 +1125,7 @@ export default function App() {
                                     <EntryList 
                                         viewMode={viewMode}
                                         entries={visibleEntries}
+                                        habits={data.habits}
                                         onSelectEntry={setSelectedEntry}
                                         renderActionButtons={renderActionButtons} // Use the renderer
                                         themeClasses={themeClasses}
