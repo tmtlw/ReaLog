@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="hu">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ReaLog</title>
+
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#10b981" />
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3238/3238016.png" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <link rel="stylesheet" href="./style.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&family=Lobster&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&family=Noto+Emoji:wght@300..700&display=swap" rel="stylesheet" crossorigin="anonymous">
+
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
+    "react-dom": "https://esm.sh/react-dom@^19.2.3"
+  }
+}
+</script>
+</head>
+  <body class="bg-zinc-950 text-zinc-200">
+    <div id="root">
+        <div style="height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 1rem;">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+            <div style="font-family: monospace; color: #71717a; text-align: center;">
+                <div id="loading-status">Rendszer indítása...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+      const modules = {};
+
+      const CRITICAL_FILES = [
+        './metadata.json',
+        './style.css',
+
+        // JS Files (Converted)
+        './src/index.jsx',
+        './src/App.jsx',
+        './src/types.js',
+        './src/constants.js',
+        './src/changelog.js',
+        './src/data/questions.js',
+        './src/data/habits.js',
+        './src/data/samples.js',
+        './src/langs/hu.js',
+        './src/langs/en.js',
+        './src/services/i18n.js',
+        './src/services/storage.js',
+        './src/services/updater.js',
+        './src/services/gemini.js',
+        './src/utils/colors.js',
+        './src/constants/theme.js',
+        './src/constants/fonts.js',
+        './src/constants/serverTemplates.js',
+        './src/components/ui/index.jsx',
+        './src/components/ui/RichTextEditor.jsx',
+        './src/components/ui/WeatherRenderer.jsx',
+        './src/components/ui/EmojiRenderer.jsx',
+        './src/components/layout/StatusBar.jsx',
+        './src/components/layout/Navbar.jsx',
+        './src/components/forms/EntryEditor.jsx',
+        './src/components/views/AtlasView.jsx',
+        './src/components/views/GalleryView.jsx',
+        './src/components/views/CalendarView.jsx',
+        './src/components/views/QuestionManager.jsx',
+        './src/components/views/HabitManager.jsx',
+        './src/components/views/EntryList.jsx',
+        './src/components/views/StatsView.jsx',
+        './src/components/views/TagManager.jsx',
+        './src/components/views/StreakView.jsx',
+        './src/components/views/QuoteWidget.jsx',
+        './src/components/modals/ExportModal.jsx',
+        './src/components/modals/SettingsModal.jsx',
+        './src/components/modals/DeployModal.jsx',
+        './src/components/modals/ThemeEditorModal.jsx',
+        './src/components/modals/StorageDebugMenu.jsx',
+        './src/components/modals/TemplateModal.jsx',
+        './src/components/modals/LocationPickerModal.jsx',
+        './src/components/modals/UpdateModal.jsx',
+        './src/components/settings/SettingsViewsTab.jsx',
+        './src/components/settings/SettingsPublicTab.jsx',
+        './src/components/settings/SettingsAccountTab.jsx',
+        './src/components/settings/SettingsCloudTab.jsx',
+        './src/components/settings/SettingsDataTab.jsx',
+        './src/components/settings/SettingsAboutTab.jsx'
+      ];
+
+      function updateStatus(msg) {
+          const el = document.getElementById('loading-status');
+          if (el) el.textContent = msg;
+      }
+
+      function registerModule(filename, code) {
+        try {
+            // Use 'react' preset for JSX. No 'typescript' needed for plain JS/JSX.
+            const transformed = Babel.transform(code, {
+                presets: ['react'],
+                filename: filename,
+                plugins: ['transform-modules-commonjs']
+            }).code;
+
+            const moduleFn = new Function('require', 'exports', 'module', 'process', transformed);
+            modules[filename] = { fn: moduleFn, exports: {} };
+        } catch (e) {
+            console.error("Error in " + filename, e);
+            throw new Error(`Hiba a ${filename} fájlban: ${e.message}`);
+        }
+      }
+
+      function resolvePath(base, relative) {
+          const stack = base.split('/');
+          stack.pop();
+          const parts = relative.split('/');
+          for (const part of parts) {
+              if (part === '.' || part === '') continue;
+              if (part === '..') {
+                  if (stack.length > 0 && stack[stack.length - 1] !== '.') stack.pop();
+              } else {
+                  stack.push(part);
+              }
+          }
+          return stack.join('/');
+      }
+
+      function loadModule(key) {
+          const mod = modules[key];
+          if (!mod.loaded) {
+              const processMock = { env: { API_KEY: '' } };
+              const boundRequire = (id) => customRequire(id, key);
+              mod.fn(boundRequire, mod.exports, mod, processMock);
+              mod.loaded = true;
+          }
+          return mod.exports;
+      }
+
+      function customRequire(id, parent) {
+        if (id === 'react') return window.React;
+        if (id === 'react-dom/client') return window.ReactDOM;
+        if (id === 'react-dom') return window.ReactDOM;
+        if (id === 'lucide-react') return window.lucide;
+
+        let resolvedIds = [];
+        if (id.startsWith('./') || id.startsWith('../')) {
+             if (parent) resolvedIds.push(resolvePath(parent, id));
+             else resolvedIds.push(id);
+        } else {
+             resolvedIds.push(id);
+             resolvedIds.push('src/' + id);
+             resolvedIds.push('./src/' + id);
+        }
+
+        const candidates = [];
+        for (const base of resolvedIds) {
+            candidates.push(base);
+            candidates.push(base + '.js');
+            candidates.push(base + '.jsx');
+            candidates.push(base + '/index.jsx');
+
+            if (!base.startsWith('./')) {
+                const dotted = './' + base;
+                candidates.push(dotted);
+                candidates.push(dotted + '.js');
+                candidates.push(dotted + '.jsx');
+                candidates.push(dotted + '/index.jsx');
+            }
+        }
+
+        for (const candidate of candidates) {
+            if (modules[candidate]) return loadModule(candidate);
+        }
+
+        throw new Error(`Modul nem található: ${id}`);
+      }
+
+      async function boot() {
+        const missing = [];
+        const loadedCode = {};
+
+        for (const path of CRITICAL_FILES) {
+            updateStatus("Betöltés: " + path);
+            try {
+                const res = await fetch(path + '?t=' + Date.now()); // Cache bust
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const text = await res.text();
+                loadedCode[path] = text;
+            } catch (e) {
+                console.warn("Failed:", path);
+                if (!path.endsWith('.css') && !path.endsWith('.json')) missing.push(path);
+            }
+        }
+
+        if (missing.length > 0) {
+            alert("Hiányzó fájlok: " + missing.join(', '));
+            return;
+        }
+
+        try {
+            updateStatus("Fordítás...");
+            for (const path of Object.keys(loadedCode)) {
+                if (path.endsWith('.js') || path.endsWith('.jsx')) {
+                    registerModule(path, loadedCode[path]);
+
+                    // Alias hacks for cleaner imports
+                    if (path.includes('types.js')) registerModule('./types.js', loadedCode[path]);
+                    if (path.includes('constants.js')) registerModule('./constants.js', loadedCode[path]);
+                }
+            }
+
+            updateStatus("Indítás...");
+
+            if (!window.React || !window.ReactDOM) throw new Error("React nem töltődött be.");
+
+            customRequire('./src/index.jsx');
+        } catch (e) {
+            console.error(e);
+            document.body.innerHTML = `<pre style="color:red; padding:20px;">${e.message}\n${e.stack}</pre>`;
+        }
+      }
+
+      window.onload = boot;
+    </script>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        window.React = React;
+        window.ReactDOM = ReactDOM;
+        // Lucide proxy logic if needed, but the original code had strict types.
+        // We can keep the proxy to allow dynamic icons
+        const realLucide = window.lucide;
+        window.lucide = new Proxy({}, {
+            get: (target, prop) => {
+                if (realLucide && realLucide.icons && realLucide.icons[prop]) {
+                    return (props) => {
+                         const { color, size, strokeWidth, className, ...rest } = props || {};
+                         const svgElement = realLucide.createElement(realLucide.icons[prop]);
+                         if (color) svgElement.setAttribute('stroke', color);
+                         if (size) { svgElement.setAttribute('width', size); svgElement.setAttribute('height', size); }
+                         if (strokeWidth) svgElement.setAttribute('stroke-width', strokeWidth);
+                         if (className) svgElement.setAttribute('class', `lucide lucide-${prop} ${className}`);
+                         Object.keys(rest).forEach(key => svgElement.setAttribute(key, rest[key]));
+                         return React.createElement('span', {
+                             style: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
+                             dangerouslySetInnerHTML: { __html: svgElement.outerHTML }
+                         });
+                    };
+                }
+                return () => React.createElement('span', {}, prop);
+            }
+        });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,5 @@
+# Secure the data directory
+<FilesMatch "\.(json|php)$">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>

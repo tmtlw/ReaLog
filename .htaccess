@@ -1,17 +1,17 @@
-# Tiltjuk a közvetlen hozzáférést a JSON adatfájlokhoz
-<FilesMatch "\.json$">
-    Order Deny,Allow
-    Deny from all
-</FilesMatch>
+<IfModule mod_rewrite.c>
+RewriteEngine On
 
-# Tiltjuk a közvetlen hozzáférést a PHP include fájlokhoz
-<FilesMatch "^(functions|header|footer|navbar)\.php$">
-    Order Deny,Allow
-    Deny from all
-</FilesMatch>
+# Ha alkönyvtárban (pl. /naplo/) fut, vedd ki a kommentet az alábbi sorból:
+# RewriteBase /naplo/
 
-# Engedélyezzük az index.php-t
-<Files index.php>
-    Order Allow,Deny
-    Allow from all
-</Files>
+# API hívások irányítása az api.php felé
+RewriteRule ^api/(.*)$ api.php [L,QSA]
+
+# Meglévő fájlok és könyvtárak közvetlen kiszolgálása
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Minden más kérés irányítása az index.html-re (kliens oldali routing)
+RewriteRule ^ index.html [L]
+</IfModule>

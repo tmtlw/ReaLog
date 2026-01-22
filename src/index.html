@@ -1,0 +1,420 @@
+
+<!DOCTYPE html>
+<html lang="hu">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ReaLog</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#10b981" />
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3238/3238016.png" />
+
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <!-- Leaflet for Atlas Mode -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="./style.css" />
+
+    <!-- Fonts: Inter, JetBrains Mono, Lobster -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&family=Lobster&display=swap" rel="stylesheet">
+
+    <!-- Emoji Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&family=Noto+Emoji:wght@300..700&display=swap" rel="stylesheet" crossorigin="anonymous">
+    <style>
+      @font-face {
+        font-family: 'OpenMoji';
+        src: url('https://cdn.jsdelivr.net/npm/@openmoji/openmoji@14.0.0/font/OpenMoji-Color.woff2') format('woff2');
+        font-display: swap;
+      }
+    </style>
+
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.33.0",
+    "react-dom": "https://esm.sh/react-dom@^19.2.3"
+  }
+}
+</script>
+</head>
+  <body class="bg-zinc-950 text-zinc-200">
+    <div id="root">
+        <!-- Initial Loader -->
+        <div style="height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 1rem;">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+            <div style="font-family: monospace; color: #71717a; text-align: center;">
+                <div id="loading-status">Rendszer indítása...</div>
+                <div id="loading-detail" style="font-size: 0.8em; opacity: 0.7; margin-top: 5px;">Inicializálás...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js')
+            .then((registration) => {
+              console.log('ServiceWorker registration successful with scope: ', registration.scope);
+            }, (err) => {
+              console.log('ServiceWorker registration failed: ', err);
+            });
+        });
+      }
+    </script>
+
+    <!-- Client-Side Module Loader & System Check -->
+    <script>
+      window.onerror = function(msg, url, line, col, error) {
+         const root = document.getElementById('root');
+         if (root && !root.innerHTML.includes('Rendszerhiba')) {
+             root.innerHTML = `<div style="padding: 20px; color: #ef4444; font-family: monospace; background:#09090b; min-height:100vh;">
+                <h1 style="font-size:1.2em; font-weight:bold;">Végzetes Hiba</h1>
+                <p>${msg}</p>
+                <small>${url}:${line}:${col}</small>
+             </div>`;
+         }
+         return false;
+      };
+
+      const modules = {};
+
+      const CRITICAL_FILES = [
+        './metadata.json',
+        './package.json',
+        './style.css',
+        './src/index.tsx',
+        './src/App.tsx',
+        './src/types.ts',
+        './src/constants.ts',
+        './src/changelog.ts',
+        './src/data/questions.ts',
+        './src/data/habits.ts',
+        './src/data/samples.ts',
+        './src/langs/hu.ts',
+        './src/langs/en.ts',
+        './src/services/i18n.ts',
+        './src/services/storage.ts',
+        './src/services/updater.ts',
+        './src/services/gemini.ts',
+        './src/constants/theme.ts',
+        './src/constants/fonts.ts',
+        './src/constants/serverTemplates.ts',
+        './src/components/ui/index.tsx',
+        './src/components/ui/RichTextEditor.tsx',
+        './src/components/ui/WeatherRenderer.tsx',
+        './src/components/ui/EmojiRenderer.tsx',
+        './src/components/layout/StatusBar.tsx',
+        './src/components/layout/Navbar.tsx',
+        './src/components/forms/EntryEditor.tsx',
+        './src/components/views/AtlasView.tsx',
+        './src/components/views/GalleryView.tsx',
+        './src/components/views/CalendarView.tsx',
+        './src/components/views/QuestionManager.tsx',
+        './src/components/views/HabitManager.tsx',
+        './src/components/views/EntryList.tsx',
+        './src/components/views/StatsView.tsx',
+        './src/components/views/TagManager.tsx',
+        './src/components/views/StreakView.tsx',
+        './src/components/views/QuoteWidget.tsx',
+        './src/components/modals/ExportModal.tsx',
+        './src/components/modals/SettingsModal.tsx',
+        './src/components/modals/DeployModal.tsx',
+        './src/components/modals/ThemeEditorModal.tsx',
+        './src/components/modals/StorageDebugMenu.tsx',
+        './src/components/modals/TemplateModal.tsx',
+        './src/components/modals/LocationPickerModal.tsx',
+        './src/components/modals/UpdateModal.tsx',
+        './src/components/settings/SettingsViewsTab.tsx',
+        './src/components/settings/SettingsPublicTab.tsx',
+        './src/components/settings/SettingsAccountTab.tsx',
+        './src/components/settings/SettingsCloudTab.tsx',
+        './src/components/settings/SettingsDataTab.tsx',
+        './src/components/settings/SettingsAboutTab.tsx'
+      ];
+
+      function updateStatus(msg, detail = "") {
+          const statusEl = document.getElementById('loading-status');
+          const detailEl = document.getElementById('loading-detail');
+          if (statusEl) statusEl.textContent = msg;
+          if (detailEl) detailEl.textContent = detail;
+          console.log(`[System Check] ${msg} ${detail}`);
+      }
+
+      function registerModule(filename, code) {
+        if (typeof Babel === 'undefined') throw new Error("Babel könyvtár nem töltődött be.");
+
+        try {
+            const transformed = Babel.transform(code, {
+                presets: ['react', 'typescript'],
+                filename: filename,
+                plugins: ['transform-modules-commonjs']
+            }).code;
+
+            const moduleFn = new Function('require', 'exports', 'module', 'process', transformed);
+
+            modules[filename] = {
+                fn: moduleFn,
+                exports: {}
+            };
+        } catch (e) {
+            console.error("Transpilation error in " + filename, e);
+            throw new Error(`Szintaktikai hiba a ${filename} fájlban: ${e.message}`);
+        }
+      }
+
+      function resolvePath(base, relative) {
+          const stack = base.split('/');
+          stack.pop();
+
+          const parts = relative.split('/');
+
+          for (const part of parts) {
+              if (part === '.' || part === '') continue;
+              if (part === '..') {
+                  if (stack.length > 0 && stack[stack.length - 1] !== '.') {
+                      stack.pop();
+                  }
+              } else {
+                  stack.push(part);
+              }
+          }
+          return stack.join('/');
+      }
+
+      function loadModule(key) {
+          const mod = modules[key];
+          if (mod && !mod.loaded) {
+              const processMock = { env: { API_KEY: '' } };
+              const boundRequire = (id) => customRequire(id, key);
+              mod.fn(boundRequire, mod.exports, mod, processMock);
+              mod.loaded = true;
+          }
+          return mod ? mod.exports : null;
+      }
+
+      function customRequire(id, parent) {
+        // 1. External Globals
+        if (id === 'react') return window.React;
+        if (id === 'react-dom/client') return window.ReactDOM;
+        if (id === 'react-dom') return window.ReactDOM;
+        if (id === 'lucide-react') return window.lucide;
+
+        // 2. Resolve internal path
+        let resolvedIds = [];
+
+        if (id.startsWith('./') || id.startsWith('../')) {
+             if (parent) {
+                 resolvedIds.push(resolvePath(parent, id));
+             } else {
+                 resolvedIds.push(id);
+             }
+        } else {
+             // Absolute imports handled as relative to root in this flat structure
+             resolvedIds.push(id);
+             resolvedIds.push('src/' + id);
+             resolvedIds.push('./src/' + id);
+        }
+
+        const candidates = [];
+        for (const base of resolvedIds) {
+            // Try as-is
+            candidates.push(base);
+
+            // Try extensions
+            if (!base.endsWith('.ts') && !base.endsWith('.tsx')) {
+                candidates.push(base + '.ts');
+                candidates.push(base + '.tsx');
+                candidates.push(base + '/index.tsx');
+            }
+
+            // Ensure './' prefix if missing
+            if (!base.startsWith('./')) {
+                const dotted = './' + base;
+                candidates.push(dotted);
+                if (!dotted.endsWith('.ts') && !dotted.endsWith('.tsx')) {
+                    candidates.push(dotted + '.ts');
+                    candidates.push(dotted + '.tsx');
+                    candidates.push(dotted + '/index.tsx');
+                }
+            }
+        }
+
+        for (const candidate of candidates) {
+            if (modules[candidate]) return loadModule(candidate);
+        }
+
+        throw new Error(`Modul nem található: ${id}`);
+      }
+
+      async function boot() {
+        const missing = [];
+        window.__SOURCE_CACHE__ = {};
+        const loadedCode = window.__SOURCE_CACHE__;
+
+        const fetchWithTimeout = async (url, ms = 5000) => {
+             const controller = new AbortController();
+             const id = setTimeout(() => controller.abort(), ms);
+             try {
+               const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
+               clearTimeout(id);
+               return response;
+             } catch (error) {
+               clearTimeout(id);
+               throw error;
+             }
+        };
+
+        for (const path of CRITICAL_FILES) {
+            updateStatus("Betöltés:", path);
+            try {
+                let res = await fetchWithTimeout(path);
+
+                // Fallback for flat structure or different base paths
+                if (!res.ok && path.includes('src/')) {
+                    const flatPath = path.replace('src/', '');
+                    const resFlat = await fetchWithTimeout(flatPath);
+                    if (resFlat.ok) res = resFlat;
+                }
+
+                if (!res.ok) {
+                     // Try src prefix if missing
+                     if (!path.includes('src/') && !path.endsWith('.css') && !path.endsWith('.json')) {
+                         const srcPath = './src/' + path.replace(/^\.\//, '');
+                         const resSrc = await fetchWithTimeout(srcPath);
+                         if (resSrc.ok) res = resSrc;
+                     }
+                }
+
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+                const text = await res.text();
+
+                if (path.endsWith('.ts') || path.endsWith('.tsx')) {
+                    if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
+                        throw new Error("Invalid content type (got HTML instead of Code)");
+                    }
+                }
+
+                loadedCode[path] = text;
+            } catch (e) {
+                console.warn(`Failed to load ${path}:`, e);
+                if (!path.endsWith('.css') && !path.endsWith('metadata.json') && !path.endsWith('package.json')) {
+                    missing.push(path);
+                }
+            }
+        }
+
+        if (missing.length > 0) {
+            // Render error screen defined above
+            const root = document.getElementById('root');
+            if(root) root.innerHTML = `<h1>Hiba: Hiányzó fájlok</h1><pre>${missing.join('\n')}</pre>`;
+        } else {
+            try {
+                updateStatus("Fájlok feldolgozása...");
+                for (const path of Object.keys(loadedCode)) {
+                    if (path.endsWith('.ts') || path.endsWith('.tsx')) {
+                        registerModule(path, loadedCode[path]);
+
+                        // Register alias for types.ts to be safe
+                        if (path.includes('types.ts')) {
+                             if (!modules['./types.ts']) registerModule('./types.ts', loadedCode[path]);
+                             if (!modules['./src/types.ts']) registerModule('./src/types.ts', loadedCode[path]);
+                        }
+                    }
+                }
+
+                updateStatus("Alkalmazás indítása...");
+
+                // Auto-load languages
+                Object.keys(modules).forEach(key => {
+                    if ((key.includes('/langs/') || key.includes('/langs\\')) && !key.endsWith('index.tsx')) {
+                        try { loadModule(key); } catch(e) {}
+                    }
+                });
+
+                if (!window.React || !window.ReactDOM) {
+                     throw new Error("React könyvtár nem töltődött be.");
+                }
+
+                try {
+                    customRequire('./src/index.tsx');
+                } catch(e) {
+                    try {
+                        customRequire('./index.tsx');
+                    } catch(e2) {
+                        console.error(e, e2);
+                        throw new Error(`Modul nem található: ./index.tsx`);
+                    }
+                }
+            } catch (compileError) {
+                console.error(compileError);
+                const root = document.getElementById('root');
+                root.innerHTML = `<pre style="color:red; padding:20px;">${compileError.stack}</pre>`;
+            }
+        }
+      }
+
+      window.onload = boot;
+    </script>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        window.React = React;
+        window.ReactDOM = ReactDOM;
+
+        const realLucide = window.lucide;
+
+        window.lucide = new Proxy({}, {
+            get: (target, prop) => {
+                if (realLucide && realLucide.icons && realLucide.icons[prop]) {
+                    return (props) => {
+                         try {
+                            const { color, size, strokeWidth, className, ...rest } = props || {};
+                            const svgElement = realLucide.createElement(realLucide.icons[prop]);
+
+                            if (color) svgElement.setAttribute('stroke', color);
+                            if (size) {
+                                svgElement.setAttribute('width', size);
+                                svgElement.setAttribute('height', size);
+                            }
+                            if (strokeWidth) svgElement.setAttribute('stroke-width', strokeWidth);
+                            if (className) svgElement.setAttribute('class', `lucide lucide-${prop} ${className}`);
+
+                            Object.keys(rest).forEach(key => {
+                                svgElement.setAttribute(key, rest[key]);
+                            });
+
+                            return React.createElement('span', {
+                                style: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
+                                dangerouslySetInnerHTML: { __html: svgElement.outerHTML }
+                            });
+                         } catch (e) {
+                             return React.createElement('span', {}, prop);
+                         }
+                    };
+                }
+                return () => React.createElement('span', {}, prop);
+            }
+        });
+    </script>
+  </body>
+</html>
