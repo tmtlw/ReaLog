@@ -6,21 +6,24 @@ import {
   Image as ImageIcon, Cloud, Calendar, List, Grid as GridIcon,
   Smile, Settings, Info, Server, MapPin, Eye, EyeOff, Palette, Search, ChevronLeft, Map as MapIcon,
   ThermometerSun, Menu, Code, LogOut, CheckCircle2, AlertCircle, CloudLightning, HardDrive, CalendarClock,
-  Wifi, WifiOff, Database, Activity, ChevronUp, Terminal, Copy, FileText, FileCode, User,
+  Wifi, WifiOff, Database, Activity, ChevronUp, Terminal, Copy, FileText, FileCode, User as UserIcon,
   Globe, Images, Layers, Shield, ShieldAlert, Clock, Bold, Italic, Underline, Link as LinkIcon, AlignLeft,
   Trophy, PieChart, Dices,
   Droplets, Moon, Sun, DollarSign, Briefcase, Heart, Brain, Music, Leaf, Coffee, Utensils, Zap, Award, Target, Flag, Bike, Dumbbell, Footprints, Bed, ShowerHead, Timer, Watch, Smartphone, Laptop, Gamepad2, ShoppingCart, Home, Car, Plane, Brush, Camera, Headphones, Gift, Star, Frown, Users, Phone, Mail, Edit2, Hash
 } from 'lucide-react';
-import { AppData, Category, Entry, WeatherData, ThemeOption, CloudConfig, CategoryConfig, PublicConfig, WeatherIconPack, EmojiStyle } from './types';
+import { AppData, Category, Entry, WeatherData, ThemeOption, CloudConfig, CategoryConfig, PublicConfig, WeatherIconPack, EmojiStyle, User } from './types';
 import { CATEGORY_LABELS, DEMO_PASSWORD, INITIAL_DATA, DEFAULT_QUESTIONS, CATEGORY_COLORS, CATEGORY_BORDER_COLORS } from './constants';
 import * as StorageService from './services/storage';
 import { getTranslation } from './services/i18n';
 import { THEMES, getHolidayTheme, HOLIDAY_THEMES, generateCustomTheme } from './constants/theme';
 import { stringToColor, stringToBgColor } from './utils/colors';
+import { hashPassword } from './utils/crypto';
 
 // Components
 import Navbar from './components/layout/Navbar';
 import StatusBar from './components/layout/StatusBar';
+import DashboardView from './components/views/DashboardView';
+import { LoginScreen } from './components/views/LoginScreen';
 import EntryList from './components/views/EntryList';
 import CalendarView from './components/views/CalendarView';
 import AtlasView from './components/views/AtlasView';
@@ -52,29 +55,17 @@ const DynamicIcon = ({ name, className }: { name: string, className?: string }) 
 };
 
 export default function App() {
-  // Load data synchronously to prevent layout/font flash
-  const [data, setData] = useState<AppData>(() => {
-      const local = StorageService.loadData();
-      if (local) {
-          return {
-              ...INITIAL_DATA,
-              ...local,
-              settings: { ...INITIAL_DATA.settings, ...(local.settings || {}) },
-              questions: local.questions || INITIAL_DATA.questions
-          };
-      }
-      return INITIAL_DATA;
-  });
+  // Separate Users state from User Data
+  const [users, setUsers] = useState<User[]>([]);
+  const [data, setData] = useState<AppData>(INITIAL_DATA);
+
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const [activeCategory, setActiveCategory] = useState<Category>(Category.DAILY);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAppLoading, setIsAppLoading] = useState(true);
   
-  const [currentTheme, setCurrentTheme] = useState<ThemeOption>(() => {
-      // Try to get theme from loaded data
-      const local = StorageService.loadData();
-      return local?.settings?.theme || 'dark';
-  });
+  const [currentTheme, setCurrentTheme] = useState<ThemeOption>('dark');
   const [themeClasses, setThemeClasses] = useState(THEMES.dark);
   const [logoEmoji, setLogoEmoji] = useState<string | null>(null);
   const [holidayName, setHolidayName] = useState<string | null>(null);
@@ -95,7 +86,7 @@ export default function App() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   // Views
-  const [globalView, setGlobalView] = useState<'none' | 'atlas' | 'gallery' | 'tags' | 'onThisDay' | 'trash' | 'stats' | 'streak'>('none');
+  const [globalView, setGlobalView] = useState<'dashboard' | 'none' | 'atlas' | 'gallery' | 'tags' | 'onThisDay' | 'trash' | 'stats' | 'streak'>('dashboard');
   const [viewMode, setViewMode] = useState<'grid' | 'timeline' | 'calendar' | 'atlas' | 'gallery'>('grid');
   const [activeTab, setActiveTab] = useState<'entries' | 'questions' | 'habits'>('entries');
   
@@ -140,85 +131,74 @@ export default function App() {
   useEffect(() => {
     const init = async () => {
         setIsAppLoading(true);
-        const local = StorageService.loadData();
         
-        // Theme is already initialized in useState
+        // 1. Load Users
+        let loadedUsers = StorageService.loadUsers();
         
-        // Restore Auth
-        if (StorageService.checkAuthSession()) {
-            setIsAdmin(true);
+        // 2. Migration: Check legacy single file data
+        if (loadedUsers.length === 0 && StorageService.hasLegacyData()) {
+             console.log("Migrating legacy data to separated structure...");
+             const adminId = crypto.randomUUID();
+             const password = await hashPassword('grind'); // Encrypt default password
+             const admin: User = {
+                 id: adminId,
+                 name: 'Admin', // Default name
+                 isAdmin: true,
+                 color: '#10b981',
+                 password: password,
+                 avatar: 'A'
+             };
+
+             // Move data to admin folder
+             StorageService.migrateToMultiUser(adminId);
+
+             // Save users
+             loadedUsers = [admin];
+             StorageService.saveUsers(loadedUsers);
         }
 
+        setUsers(loadedUsers);
+
+        // Check Server
         const status = await StorageService.checkServerStatus();
         if (status.online) {
             setServerMode(true);
-            setSyncStatus('syncing');
-            const serverData = await StorageService.serverLoad();
-            if (serverData) {
-                setData(serverData);
-                setSyncStatus('success');
-                setLastSyncTime(Date.now());
-                setSystemMessage("");
-                setIsAppLoading(false);
-            } else {
-                setSystemMessage(t('server.empty_response'));
-                setData(local);
-                setIsAppLoading(false);
+            const serverUsers = await StorageService.serverLoadUsers();
+            if (serverUsers && serverUsers.length > 0) {
+                setUsers(serverUsers);
             }
-        } else {
-             // Cloud Check
-             if (local.settings?.cloud?.enabled && local.settings.cloud.url) {
-                 setSyncStatus('syncing');
-                 try {
-                     const cloudData = await StorageService.cloudLoad(local.settings.cloud);
-                     if (cloudData) {
-                         setData(cloudData); // Source of truth
-                         setSyncStatus('success');
-                         setLastSyncTime(Date.now());
-                     } else {
-                         setData(local);
-                     }
-                 } catch (e) {
-                     setSystemMessage(t('server.network_error'));
-                     setData(local);
-                 }
-             } else {
-                 setData(local);
-             }
-             setIsAppLoading(false);
         }
 
-        // Setup Auto Sync
-        StorageService.setupBackgroundSync(
-            () => setSyncStatus('auto_syncing'),
-            (success) => setSyncStatus(success ? 'auto_success' : 'error')
-        );
+        setIsAppLoading(false);
     };
     init();
   }, []);
 
   // --- Data Saving ---
+  // Save Users (Admin Only) - Triggered when users state changes?
+  // Better to explicit save in Settings handler.
+  // But here we handle Current User Data auto-save
   useEffect(() => {
-      if (isAdmin) {
-          StorageService.saveData(data);
+      if (currentUser && !isAppLoading) {
+          // Save Local
+          StorageService.saveUserData(currentUser.id, data);
+
+          // Auto Sync Server
+          if (serverMode) {
+              const timeout = setTimeout(() => {
+                  setSyncStatus('auto_syncing');
+                  StorageService.serverSaveUserData(currentUser.id, data)
+                      .then(() => {
+                          setSyncStatus('auto_success');
+                          setLastSyncTime(Date.now());
+                          setSystemMessage("");
+                      })
+                      .catch(() => setSyncStatus('error'));
+              }, 2000);
+              return () => clearTimeout(timeout);
+          }
       }
-      
-      if(isAppLoading) return;
-      
-      if (serverMode && isAdmin) {
-          const timeout = setTimeout(() => {
-              setSyncStatus('auto_syncing');
-              StorageService.serverSave(data)
-                  .then(() => {
-                      setSyncStatus('auto_success');
-                      setLastSyncTime(Date.now());
-                      setSystemMessage("");
-                  })
-                  .catch(() => setSyncStatus('error'));
-          }, 2000);
-          return () => clearTimeout(timeout);
-      }
-  }, [data, serverMode, isAppLoading, isAdmin]);
+  }, [data, currentUser, isAppLoading, serverMode]);
 
   // --- Theme Handling ---
   useEffect(() => {
@@ -322,35 +302,56 @@ export default function App() {
   // --- Handlers --- (Same as previous + new ones)
 
   const handleStorageModeSwitch = async (mode: 'server' | 'local') => {
+      // Simplification: In multi-user, checking server status updates mode
       if (mode === 'server') {
           const status = await StorageService.checkServerStatus();
           if (!status.online) throw new Error(status.message);
           setServerMode(true);
-          const sData = await StorageService.serverLoad();
-          if (sData) setData(prev => ({...sData, settings: {...prev.settings, ...sData.settings}}));
       } else {
           setServerMode(false);
       }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
-      e.preventDefault();
-      const currentPassword = data.settings?.adminPassword || DEMO_PASSWORD;
-      if (passwordInput === currentPassword) {
-          setIsAdmin(true);
-          setShowAuthModal(false);
-          setPasswordInput("");
-          StorageService.saveAuthSession();
-      } else {
-          alert(t('app.wrong_password'));
+  const handleUserLogin = async (user: User) => {
+      setCurrentUser(user);
+      setIsAdmin(!!user.isAdmin);
+
+      // Load Data
+      let userData;
+      if (serverMode) {
+          userData = await StorageService.serverLoadUserData(user.id);
+      }
+      if (!userData) {
+          userData = StorageService.loadUserData(user.id);
+      }
+
+      // Inject Users List into AppData for Dashboard
+      setData({ ...userData, users: users });
+
+      // Load theme from user settings
+      if (userData.settings?.theme) {
+          setCurrentTheme(userData.settings.theme);
       }
   };
 
   const handleLogout = () => {
+      setCurrentUser(null);
       setIsAdmin(false);
       setIsEditing(false);
       setActiveTab('entries');
+      setData(INITIAL_DATA);
       StorageService.clearAuthSession();
+  };
+
+  // Update Users List (Admin)
+  const handleUpdateUsers = (newUsers: User[]) => {
+      setUsers(newUsers);
+      StorageService.saveUsers(newUsers);
+      if (serverMode) {
+          StorageService.serverSaveUsers(newUsers);
+      }
+      // Also update current data context
+      setData(prev => ({ ...prev, users: newUsers }));
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -414,6 +415,7 @@ export default function App() {
 
       setCurrentEntry({
           id: crypto.randomUUID(),
+          userId: currentUser?.id,
           timestamp: Date.now(),
           category: activeCategory,
           dateLabel: label,
@@ -481,6 +483,7 @@ export default function App() {
       const newEntry: Partial<Entry> = {
           ...e,
           id: crypto.randomUUID(),
+          userId: currentUser?.id,
           timestamp: Date.now(), // Set to now for the new copy
           dateLabel: new Date().toISOString().slice(0, 10), // Update label to today
           isDraft: true,
@@ -559,6 +562,11 @@ export default function App() {
           entries = entries.filter(e => !e.isPrivate);
       }
 
+      // Filter by user for standard views (keep "old way")
+      if (currentUser && globalView !== 'dashboard') {
+          entries = entries.filter(e => e.userId === currentUser.id);
+      }
+
       if (globalView === 'atlas' || globalView === 'gallery') {
           // No category filter
       } else if (globalView === 'onThisDay') {
@@ -591,7 +599,7 @@ export default function App() {
       }
 
       return entries.sort((a, b) => b.timestamp - a.timestamp);
-  }, [data.entries, activeCategory, globalView, searchQuery, isAdmin, data.settings]);
+  }, [data.entries, activeCategory, globalView, searchQuery, isAdmin, data.settings, currentUser]);
 
   // On This Day Logic for Dashboard Card
   const onThisDayEntries = useMemo(() => {
@@ -807,37 +815,24 @@ export default function App() {
 
   // --- Render ---
   
+  // Show Login Screen if no user is authenticated
+  if (!currentUser && !isAppLoading) {
+      return (
+          <LoginScreen
+              users={users}
+              onLogin={handleUserLogin}
+              themeClasses={themeClasses}
+              t={t}
+          />
+      );
+  }
+
   return (
     <div className={`min-h-screen transition-colors duration-300 ${themeClasses.bg} ${themeClasses.text} selection:bg-emerald-500/30 flex flex-col`}>
         {/* Modals */}
-        {showAuthModal && (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
-                <Card themeClasses={themeClasses} className="w-full max-w-sm p-8 shadow-2xl relative">
-                    <button onClick={() => setShowAuthModal(false)} className="absolute top-4 right-4 opacity-50 hover:opacity-100"><X className="w-5 h-5" /></button>
-                    <div className="text-center mb-6">
-                        <div className="w-16 h-16 bg-emerald-500 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/20">
-                            <Lock className="w-8 h-8 text-white" />
-                        </div>
-                        <h2 className="text-2xl font-bold">{t('app.admin_login')}</h2>
-                        <p className={`text-sm mt-2 ${themeClasses.subtext}`}>{t('app.login_subtitle')}</p>
-                    </div>
-                    <form onSubmit={handleLogin} className="space-y-4">
-                        <Input 
-                            themeClasses={themeClasses} 
-                            type="password" 
-                            value={passwordInput} 
-                            onChange={(e: any) => setPasswordInput(e.target.value)} 
-                            placeholder={t('app.password')} 
-                            autoFocus
-                        />
-                        <Button type="submit" themeClasses={themeClasses} className="w-full">{t('app.login_btn')}</Button>
-                    </form>
-                </Card>
-            </div>
-        )}
 
         {showExportModal && <ExportModal onClose={() => setShowExportModal(false)} data={data} onImport={handleImport} themeClasses={themeClasses} currentTheme={currentTheme} t={t} />}
-        {showSettingsModal && <SettingsModal onClose={() => setShowSettingsModal(false)} data={data} setData={setData} themeClasses={themeClasses} currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} t={t} initialTab={settingsTab} />}
+        {showSettingsModal && <SettingsModal onClose={() => setShowSettingsModal(false)} data={data} setData={setData} themeClasses={themeClasses} currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} t={t} initialTab={settingsTab} onUpdateUsers={handleUpdateUsers} />}
         {showDeployModal && <DeployModal onClose={() => setShowDeployModal(false)} themeClasses={themeClasses} t={t} />}
         {showThemeEditor && <ThemeEditorModal onClose={() => setShowThemeEditor(false)} data={data} setData={setData} currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} themeClasses={themeClasses} t={t} />}
         {showStorageMenu && <StorageDebugMenu onClose={() => setShowStorageMenu(false)} onSwitchMode={handleStorageModeSwitch} serverMode={serverMode} cloudConfig={data.settings?.cloud} lastError={systemMessage} themeClasses={themeClasses} t={t} />}
@@ -904,7 +899,7 @@ export default function App() {
         <Navbar 
             appName={holidayName || data.settings?.userName || 'ReaLog'}
             activeCategory={activeCategory}
-            setActiveCategory={setActiveCategory}
+            setActiveCategory={(cat) => { setActiveCategory(cat); setGlobalView('none'); }}
             globalView={globalView}
             setGlobalView={setGlobalView}
             setActiveTab={setActiveTab}
@@ -914,7 +909,7 @@ export default function App() {
             onOpenSettings={(tab) => { if(tab) setSettingsTab(tab); setShowSettingsModal(true); }}
             onOpenThemeEditor={() => setShowThemeEditor(true)}
             onLogout={handleLogout}
-            onOpenAuth={() => setShowAuthModal(true)}
+            onOpenAuth={() => {}} // Deprecated auth modal
             onRandomEntry={pickRandomEntry}
             themeClasses={themeClasses}
             showMobileMenu={showMobileMenu}
@@ -995,6 +990,17 @@ export default function App() {
                     themeClasses={themeClasses} 
                     renderActionButtons={renderActionButtons} // Pass action buttons
                     t={t}
+                />
+            ) : globalView === 'dashboard' ? (
+                <DashboardView
+                    data={data}
+                    themeClasses={themeClasses}
+                    t={t}
+                    onSelectEntry={setSelectedEntry}
+                    isAdmin={isAdmin}
+                    weatherPack={weatherPack}
+                    emojiStyle={emojiStyle}
+                    currentUser={currentUser}
                 />
             ) : globalView === 'stats' ? (
                 <StatsView 
@@ -1119,6 +1125,7 @@ export default function App() {
                                     <EntryList 
                                         viewMode={viewMode}
                                         entries={visibleEntries}
+                                        habits={data.habits}
                                         onSelectEntry={setSelectedEntry}
                                         renderActionButtons={renderActionButtons} // Use the renderer
                                         themeClasses={themeClasses}

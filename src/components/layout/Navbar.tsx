@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  Map as MapIcon, Images, Download, Server, Settings, LogOut, Lock, Menu, Hash, CalendarClock, Palette, Monitor, MoreVertical, Trash2, PieChart, Trophy, Upload, Book, Dices
+  Map as MapIcon, Images, Download, Server, Settings, LogOut, Lock, Menu, Hash, CalendarClock, Palette, Monitor, MoreVertical, Trash2, PieChart, Trophy, Upload, Book, Dices, Home
 } from 'lucide-react';
 import { Category } from '../../types';
 import { Button } from '../ui';
@@ -86,6 +86,16 @@ const Navbar: React.FC<NavbarProps> = ({
 
                      {/* Categories */}
                      <div className="flex items-center gap-1 bg-black/5 p-1 rounded-lg border border-black/5 overflow-x-auto no-scrollbar ml-2 md:ml-0">
+                        {/* New Home Button */}
+                        <button
+                            onClick={() => { setGlobalView('dashboard'); setSearchQuery(""); }}
+                            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1 ${globalView === 'dashboard' ? themeClasses.primaryBtn + ' shadow-md scale-105' : 'opacity-60 hover:opacity-100 bg-transparent'}`}
+                        >
+                            <Home className="w-3 h-3" />
+                            <span className="hidden lg:inline">{t('nav.dashboard') || 'Főoldal'}</span>
+                            <span className="lg:hidden">{t('nav.dashboard_short') || 'Home'}</span>
+                        </button>
+
                         {[Category.DAILY, Category.WEEKLY, Category.MONTHLY, Category.YEARLY].map(cat => (
                             <button 
                                 key={cat}

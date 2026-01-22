@@ -1,5 +1,5 @@
 
-import { Category, AppData } from './types';
+import { Category, AppData, WidgetConfig } from './types';
 import { DEFAULT_QUESTIONS } from './data/questions';
 import { DEFAULT_HABITS } from './data/habits';
 import { SAMPLE_ENTRIES } from './data/samples';
@@ -19,7 +19,23 @@ export const GITHUB_CONFIG = {
 // Re-export for compatibility
 export { DEFAULT_QUESTIONS, DEFAULT_HABITS, SAMPLE_ENTRIES };
 
+export const DEFAULT_WIDGETS: WidgetConfig[] = [
+    { id: 'w1', type: 'stats', order: 0, isEnabled: true },
+    { id: 'w2', type: 'onThisDay', order: 1, isEnabled: true },
+    { id: 'w3', type: 'activeUsers', order: 2, isEnabled: true }
+];
+
 export const INITIAL_DATA: AppData = {
+  users: [
+      {
+          id: 'admin-user',
+          name: 'Admin',
+          password: 'grind',
+          isAdmin: true,
+          color: '#10b981',
+          avatar: 'A'
+      }
+  ],
   questions: DEFAULT_QUESTIONS,
   habits: DEFAULT_HABITS,
   entries: SAMPLE_ENTRIES,

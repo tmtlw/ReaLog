@@ -6,7 +6,6 @@ import { CATEGORY_COLORS, CATEGORY_HOVER_BORDERS, CATEGORY_TEXT_COLORS, INITIAL_
 import { Card } from '../ui';
 import WeatherRenderer from '../ui/WeatherRenderer';
 import EmojiRenderer from '../ui/EmojiRenderer';
-import * as StorageService from '../../services/storage';
 
 // Inline Dynamic Icon helper for List view
 const DynamicIcon = ({ name, className }: { name: string, className?: string }) => {
@@ -20,6 +19,7 @@ const DynamicIcon = ({ name, className }: { name: string, className?: string }) 
 interface EntryListProps {
     viewMode: 'grid' | 'timeline' | 'calendar' | 'atlas' | 'gallery';
     entries: Entry[];
+    habits?: Habit[];
     onSelectEntry: (e: Entry) => void;
     renderActionButtons: (e: Entry) => React.ReactNode;
     themeClasses: any;
@@ -31,11 +31,9 @@ interface EntryListProps {
 }
 
 const EntryList: React.FC<EntryListProps> = ({
-    viewMode, entries, onSelectEntry, renderActionButtons, themeClasses, isAdmin, t, gridLayout = 'standard', weatherPack = 'outline', emojiStyle = 'native'
+    viewMode, entries, habits = [], onSelectEntry, renderActionButtons, themeClasses, isAdmin, t, gridLayout = 'standard', weatherPack = 'outline', emojiStyle = 'native'
 }) => {
     
-    const habits: Habit[] = StorageService.loadData().habits || [];
-
     const getCatLabel = (cat: Category) => t(`category.${cat.toLowerCase()}`);
 
     const getReadTime = (e: Entry) => {

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { AppData, ThemeOption } from '../../types';
+import { User, AppData, ThemeOption } from '../../types';
 import { Button, Card } from '../ui';
 import { APP_VERSION } from '../../changelog';
 import * as StorageService from '../../services/storage';
@@ -17,8 +17,10 @@ import SettingsAccountTab from '../settings/SettingsAccountTab';
 import SettingsDataTab from '../settings/SettingsDataTab';
 import SettingsLayoutTab from '../settings/SettingsCloudTab'; 
 import SettingsAboutTab from '../settings/SettingsAboutTab';
+import SettingsUsersTab from '../settings/SettingsUsersTab';
+import SettingsDashboardTab from '../settings/SettingsDashboardTab';
 
-type Tab = 'views' | 'public' | 'account' | 'layout' | 'about' | 'data';
+type Tab = 'views' | 'public' | 'account' | 'layout' | 'about' | 'data' | 'users' | 'dashboard';
 
 const SettingsModal: React.FC<{ 
     onClose: () => void, 
@@ -28,8 +30,9 @@ const SettingsModal: React.FC<{
     currentTheme: ThemeOption, 
     setCurrentTheme: (t: ThemeOption) => void,
     t: (key: string) => string,
-    initialTab?: Tab
-}> = ({ onClose, data, setData, themeClasses, currentTheme, setCurrentTheme, t, initialTab = 'account' }) => {
+    initialTab?: Tab,
+    onUpdateUsers?: (users: User[]) => void
+}> = ({ onClose, data, setData, themeClasses, currentTheme, setCurrentTheme, t, initialTab = 'account', onUpdateUsers }) => {
     const [activeTab, setActiveTab] = useState<Tab>(initialTab);
     const [localSettings, setLocalSettings] = useState(data.settings || {});
     
@@ -184,6 +187,8 @@ const SettingsModal: React.FC<{
             <Card themeClasses={themeClasses} className="w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[85vh] mb-10 border-2">
                 <div className={`flex border-b overflow-x-auto shrink-0 ${themeClasses.card.includes('zinc') ? 'border-zinc-800' : 'border-slate-200'}`}>
                     <button onClick={() => setActiveTab('account')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'account' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>{t('settings.tabs.account')}</button>
+                    <button onClick={() => setActiveTab('users')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'users' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>Felhasználók</button>
+                    <button onClick={() => setActiveTab('dashboard')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'dashboard' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>Műszerfal</button>
                     <button onClick={() => setActiveTab('views')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'views' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>{t('settings.tabs.views')}</button>
                     <button onClick={() => setActiveTab('public')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'public' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>{t('settings.tabs.public')}</button>
                     <button onClick={() => setActiveTab('layout')} className={`flex-1 p-4 text-sm font-bold text-center whitespace-nowrap ${activeTab === 'layout' ? themeClasses.accent + ' border-b-2 border-current' : 'opacity-60'}`}>{t('settings.tabs.layout')}</button>
@@ -192,6 +197,24 @@ const SettingsModal: React.FC<{
                 </div>
 
                 <div className={`flex-1 min-h-0 ${activeTab === 'about' ? 'flex flex-col overflow-hidden' : 'p-6 overflow-y-auto'}`}>
+
+                    {activeTab === 'users' && (
+                        <SettingsUsersTab
+                            users={data.users || []}
+                            onUpdateUsers={(users) => onUpdateUsers ? onUpdateUsers(users) : setData(prev => ({ ...prev, users }))}
+                            themeClasses={themeClasses}
+                            t={t}
+                        />
+                    )}
+
+                    {activeTab === 'dashboard' && (
+                        <SettingsDashboardTab
+                            widgets={data.dashboardWidgets || []}
+                            onUpdateWidgets={(widgets) => setData(prev => ({ ...prev, dashboardWidgets: widgets }))}
+                            themeClasses={themeClasses}
+                            t={t}
+                        />
+                    )}
                     
                     {activeTab === 'views' && (
                         <SettingsViewsTab 
