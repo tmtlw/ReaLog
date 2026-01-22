@@ -195,6 +195,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         header('Location: index.php?page=habits');
         exit;
     }
+
+    // --- BEÁLLÍTÁSOK MENTÉSE ---
+    if ($_POST['action'] === 'save_settings') {
+        $settings = load_data(SETTINGS_FILE);
+        $settings['userName'] = $_POST['userName'] ?? $settings['userName'];
+
+        // Ha változik a jelszó
+        if (!empty($_POST['adminPassword'])) {
+            $settings['adminPassword'] = $_POST['adminPassword'];
+        }
+
+        save_data(SETTINGS_FILE, $settings);
+
+        // Ha jelszó változott, kiléptethetnénk, de most maradjunk egyszerűen
+        header('Location: index.php?page=settings&tab=account');
+        exit;
+    }
 }
 
 // Routing
@@ -238,6 +255,9 @@ switch ($page) {
         break;
     case 'habits':
         require_once 'views/habits.php';
+        break;
+    case 'settings':
+        require_once 'views/settings.php';
         break;
     default:
         echo '<div class="p-8 text-center text-red-500">404 - Az oldal nem található</div>';

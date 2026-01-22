@@ -33,6 +33,9 @@ $active_page = $_GET['page'] ?? 'dashboard';
 
             <!-- Right Side -->
             <div class="flex items-center gap-2">
+                <a href="?page=settings" class="p-2 hover:bg-white/10 rounded-full text-zinc-400 hover:text-white transition-colors" title="Beállítások">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                </a>
                 <form action="index.php" method="POST" class="inline">
                     <input type="hidden" name="action" value="logout">
                     <button type="submit" class="p-2 hover:bg-white/10 rounded-full text-zinc-400 hover:text-white transition-colors" title="Kijelentkezés">
