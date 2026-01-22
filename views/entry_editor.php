@@ -3,6 +3,9 @@
 
 $id = $_GET['id'] ?? null;
 $entries = load_data(ENTRIES_FILE);
+$questions = load_data(QUESTIONS_FILE);
+$habits = load_data(HABITS_FILE);
+
 $entry = null;
 
 if ($id) {
@@ -14,13 +17,11 @@ if ($id) {
     }
 }
 
-// Ha nincs entry, de szerkeszteni akarunk, az hiba, vagy új entry
 if (!$entry && $id) {
     echo "Hiba: Bejegyzés nem található.";
     exit;
 }
 
-// Default értékek új bejegyzéshez
 if (!$entry) {
     $entry = [
         'id' => uniqid(),
@@ -30,12 +31,25 @@ if (!$entry) {
         'freeTextContent' => '',
         'mood' => '',
         'tags' => [],
+        'responses' => [],
+        'habitValues' => [],
         'timestamp' => time() * 1000,
         'dateLabel' => date('Y-m-d')
     ];
 }
 
 $is_editing = (bool)$id;
+$current_category = $entry['category'];
+
+// Aktív kérdések lekérése a kategóriához
+$active_questions = array_filter($questions, function($q) use ($current_category) {
+    return ($q['isActive'] ?? true) && ($q['category'] === $current_category);
+});
+
+// Aktív szokások
+$active_habits = array_filter($habits, function($h) {
+    return ($h['isActive'] ?? true);
+});
 ?>
 
 <div class="max-w-4xl mx-auto w-full p-4">
@@ -95,19 +109,89 @@ $is_editing = (bool)$id;
             </div>
         </div>
 
-        <!-- Kategória -->
-        <div>
-            <label class="block text-xs font-bold text-zinc-500 uppercase mb-2">Kategória</label>
-            <select name="category" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2 text-white">
-                <option value="DAILY" <?php echo ($entry['category'] === 'DAILY') ? 'selected' : ''; ?>>Napi</option>
-                <option value="WEEKLY" <?php echo ($entry['category'] === 'WEEKLY') ? 'selected' : ''; ?>>Heti</option>
-                <option value="MONTHLY" <?php echo ($entry['category'] === 'MONTHLY') ? 'selected' : ''; ?>>Havi</option>
-            </select>
+        <!-- Kategória és Mód -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs font-bold text-zinc-500 uppercase mb-2">Kategória</label>
+                <select name="category" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2 text-white" onchange="this.form.submit()"> <!-- Egyszerű újratöltés kategória váltáskor, hogy frissüljenek a kérdések -->
+                    <option value="DAILY" <?php echo ($entry['category'] === 'DAILY') ? 'selected' : ''; ?>>Napi</option>
+                    <option value="WEEKLY" <?php echo ($entry['category'] === 'WEEKLY') ? 'selected' : ''; ?>>Heti</option>
+                    <option value="MONTHLY" <?php echo ($entry['category'] === 'MONTHLY') ? 'selected' : ''; ?>>Havi</option>
+                </select>
+            </div>
+             <div>
+                <label class="block text-xs font-bold text-zinc-500 uppercase mb-2">Bejegyzés Típusa</label>
+                <select name="entryMode" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2 text-white">
+                    <option value="free" <?php echo ($entry['entryMode'] === 'free') ? 'selected' : ''; ?>>Szabad Szöveges</option>
+                    <option value="structured" <?php echo ($entry['entryMode'] === 'structured') ? 'selected' : ''; ?>>Kérdezz-Felelek</option>
+                </select>
+            </div>
         </div>
 
-        <!-- Tartalom (Free Text) -->
+        <!-- Szokások Tracker -->
+        <?php if (!empty($active_habits)): ?>
+        <div class="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+            <h3 class="text-sm font-bold text-emerald-500 uppercase mb-3 flex items-center gap-2">
+                <i data-lucide="activity" class="w-4 h-4"></i> Szokások
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <?php foreach ($active_habits as $h):
+                    $val = $entry['habitValues'][$h['id']] ?? null;
+                ?>
+                    <div class="flex items-center justify-between bg-zinc-950 p-3 rounded-lg border border-zinc-800">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="<?php echo $h['icon'] ?? 'circle'; ?>" class="w-4 h-4 text-zinc-500"></i>
+                            <span class="text-sm font-medium text-zinc-300"><?php echo htmlspecialchars($h['title']); ?></span>
+                        </div>
+
+                        <?php if ($h['type'] === 'boolean'): ?>
+                            <label class="cursor-pointer relative inline-flex items-center">
+                                <input type="checkbox" name="habit[<?php echo $h['id']; ?>]" class="peer sr-only" <?php echo $val ? 'checked' : ''; ?>>
+                                <div class="w-9 h-5 bg-zinc-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-emerald-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                            </label>
+                        <?php else: ?>
+                            <div class="flex items-center gap-1 w-20">
+                                <input
+                                    type="number"
+                                    name="habit[<?php echo $h['id']; ?>]"
+                                    value="<?php echo htmlspecialchars($val ?? ''); ?>"
+                                    class="w-full bg-zinc-800 border-none rounded px-2 py-1 text-right text-sm text-white focus:ring-1 focus:ring-emerald-500"
+                                    placeholder="0"
+                                >
+                                <span class="text-xs text-zinc-500"><?php echo htmlspecialchars($h['unit'] ?? ''); ?></span>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- Kérdések (Csak ha vannak) -->
+        <?php if (!empty($active_questions)): ?>
+        <div class="space-y-4">
+             <h3 class="text-sm font-bold text-emerald-500 uppercase flex items-center gap-2">
+                <i data-lucide="help-circle" class="w-4 h-4"></i> Napi Kérdések
+            </h3>
+            <?php foreach ($active_questions as $q): ?>
+                <div>
+                    <label class="block text-sm font-medium text-zinc-300 mb-2">
+                        <?php echo htmlspecialchars($q['text']); ?>
+                    </label>
+                    <textarea
+                        name="response[<?php echo $q['id']; ?>]"
+                        rows="2"
+                        class="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                        placeholder="Válasz..."
+                    ><?php echo htmlspecialchars($entry['responses'][$q['id']] ?? ''); ?></textarea>
+                </div>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+
+        <!-- Szabad Szöveg (Mindig látható, vagy csak ha Free mód - most hagyom mindig, mert hasznos jegyzetnek) -->
         <div>
-            <label class="block text-xs font-bold text-zinc-500 uppercase mb-2">Tartalom</label>
+            <label class="block text-xs font-bold text-zinc-500 uppercase mb-2">Egyéb Jegyzetek / Szabad Szöveg</label>
             <textarea
                 name="freeTextContent"
                 rows="10"

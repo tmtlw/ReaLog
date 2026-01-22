@@ -29,6 +29,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     if ($_POST['action'] === 'save_entry') {
         $id = $_POST['id'];
+
+        // Responses feldolgozása
+        $responses = [];
+        if (isset($_POST['response']) && is_array($_POST['response'])) {
+            foreach ($_POST['response'] as $qid => $val) {
+                if (!empty(trim($val))) {
+                    $responses[$qid] = $val;
+                }
+            }
+        }
+
+        // Habit Values feldolgozása
+        $habitValues = [];
+        if (isset($_POST['habit']) && is_array($_POST['habit'])) {
+            foreach ($_POST['habit'] as $hid => $val) {
+                // Checkboxnál 'on' jön, ha be van pipálva, value-nál szám/szöveg
+                if ($val === 'on') $habitValues[$hid] = true;
+                else $habitValues[$hid] = $val; // Pl. számérték
+            }
+        }
+
         $new_entry = [
             'id' => $id,
             'title' => $_POST['title'] ?? '',
@@ -37,9 +58,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             'category' => $_POST['category'] ?? 'DAILY',
             'mood' => $_POST['mood'] ?? null,
             'freeTextContent' => $_POST['freeTextContent'] ?? '',
-            'entryMode' => 'free',
+            'entryMode' => $_POST['entryMode'] ?? 'free', // structured vagy free
             'tags' => array_map('trim', explode(',', $_POST['tags'] ?? '')),
-            'responses' => [], // Egyszerűsített
+            'responses' => $responses,
+            'habitValues' => $habitValues,
             'isTrashed' => false
         ];
 
@@ -71,6 +93,106 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
         save_data(ENTRIES_FILE, $entries);
         header('Location: index.php?page=entries');
+        exit;
+    }
+
+    // --- KÉRDÉSEK KEZELÉSE ---
+    if ($_POST['action'] === 'save_question') {
+        $questions = load_data(QUESTIONS_FILE);
+        $id = $_POST['id'] ?: uniqid('q_');
+        $new_q = [
+            'id' => $id,
+            'text' => $_POST['text'],
+            'category' => $_POST['category'] ?? 'DAILY',
+            'isActive' => isset($_POST['isActive'])
+        ];
+
+        $found = false;
+        foreach ($questions as &$q) {
+            if ($q['id'] === $id) {
+                $q = array_merge($q, $new_q);
+                $found = true;
+                break;
+            }
+        }
+        if (!$found) $questions[] = $new_q;
+
+        save_data(QUESTIONS_FILE, $questions);
+        header('Location: index.php?page=questions');
+        exit;
+    }
+
+    if ($_POST['action'] === 'delete_question') {
+        $questions = load_data(QUESTIONS_FILE);
+        $questions = array_filter($questions, function($q) {
+            return $q['id'] !== $_POST['id'];
+        });
+        save_data(QUESTIONS_FILE, array_values($questions));
+        header('Location: index.php?page=questions');
+        exit;
+    }
+
+    if ($_POST['action'] === 'toggle_question') {
+        $questions = load_data(QUESTIONS_FILE);
+        foreach ($questions as &$q) {
+            if ($q['id'] === $_POST['id']) {
+                $q['isActive'] = !$q['isActive'];
+                break;
+            }
+        }
+        save_data(QUESTIONS_FILE, $questions);
+        header('Location: index.php?page=questions');
+        exit;
+    }
+
+    // --- SZOKÁSOK KEZELÉSE ---
+    if ($_POST['action'] === 'save_habit') {
+        $habits = load_data(HABITS_FILE);
+        $id = $_POST['id'] ?: uniqid('h_');
+        $new_h = [
+            'id' => $id,
+            'title' => $_POST['title'],
+            'type' => $_POST['type'] ?? 'boolean',
+            'icon' => $_POST['icon'] ?? 'activity',
+            'unit' => $_POST['unit'] ?? '',
+            'isActive' => isset($_POST['isActive'])
+        ];
+
+        $found = false;
+        foreach ($habits as &$h) {
+            if ($h['id'] === $id) {
+                $h = array_merge($h, $new_h);
+                $found = true;
+                break;
+            }
+        }
+        if (!$found) $habits[] = $new_h;
+
+        save_data(HABITS_FILE, $habits);
+        header('Location: index.php?page=habits');
+        exit;
+    }
+
+    if ($_POST['action'] === 'delete_habit') {
+        $habits = load_data(HABITS_FILE);
+        $habits = array_filter($habits, function($h) {
+            return $h['id'] !== $_POST['id'];
+        });
+        save_data(HABITS_FILE, array_values($habits));
+        header('Location: index.php?page=habits');
+        exit;
+    }
+
+    if ($_POST['action'] === 'toggle_habit') {
+        $habits = load_data(HABITS_FILE);
+        foreach ($habits as &$h) {
+            if ($h['id'] === $_POST['id']) {
+                $h['isActive'] = !$h['isActive'];
+                break;
+            }
+        }
+        save_data(HABITS_FILE, $habits);
+        header('Location: index.php?page=habits');
         exit;
     }
 }
@@ -110,6 +232,12 @@ switch ($page) {
         break;
     case 'atlas':
         require_once 'views/atlas.php';
+        break;
+    case 'questions':
+        require_once 'views/questions.php';
+        break;
+    case 'habits':
+        require_once 'views/habits.php';
         break;
     default:
         echo '<div class="p-8 text-center text-red-500">404 - Az oldal nem található</div>';

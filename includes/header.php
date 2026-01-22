@@ -38,6 +38,7 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
+    <link rel="stylesheet" href="style.css">
     <style>
         body { font-family: 'Inter', sans-serif; }
         .font-lobster { font-family: 'Lobster', cursive; }

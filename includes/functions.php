@@ -5,11 +5,16 @@
 session_start();
 
 // Alapértelmezett beállítások
-define('DATA_DIR', __DIR__ . '/../');
+define('DATA_DIR', __DIR__ . '/../data/');
 define('ENTRIES_FILE', DATA_DIR . 'entries.json');
 define('SETTINGS_FILE', DATA_DIR . 'settings.json');
 define('QUESTIONS_FILE', DATA_DIR . 'questions.json');
 define('HABITS_FILE', DATA_DIR . 'habits.json');
+
+// Mappa létrehozása, ha nem létezik
+if (!file_exists(DATA_DIR)) {
+    mkdir(DATA_DIR, 0755, true);
+}
 
 /**
  * Adatok betöltése JSON fájlból

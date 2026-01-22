@@ -1,0 +1,68 @@
+[
+  {
+    "id": "h1",
+    "title": "Vízivás (2L)",
+    "type": "boolean",
+    "icon": "droplets",
+    "isActive": true
+  },
+  {
+    "id": "h2",
+    "title": "Olvasás",
+    "type": "value",
+    "unit": "oldal",
+    "icon": "book",
+    "isActive": true
+  },
+  {
+    "id": "h3",
+    "title": "Edzés",
+    "type": "boolean",
+    "icon": "dumbbell",
+    "isActive": true
+  },
+  {
+    "id": "h4",
+    "title": "Meditáció",
+    "type": "boolean",
+    "icon": "brain",
+    "isActive": true
+  },
+  {
+    "id": "h5",
+    "title": "Korai kelés",
+    "type": "boolean",
+    "icon": "sun",
+    "isActive": false
+  },
+  {
+    "id": "h6",
+    "title": "Nincs cukor",
+    "type": "boolean",
+    "icon": "cookie",
+    "isActive": false
+  },
+  {
+    "id": "h7",
+    "title": "Séta",
+    "type": "value",
+    "unit": "km",
+    "icon": "footprints",
+    "isActive": false
+  },
+  {
+    "id": "h8",
+    "title": "Tanulás",
+    "type": "value",
+    "unit": "perc",
+    "icon": "graduation-cap",
+    "isActive": false
+  },
+  {
+    "id": "h9",
+    "title": "Hideg zuhany",
+    "type": "boolean",
+    "icon": "snowflake",
+    "isActive": false
+  }
+]

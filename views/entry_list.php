@@ -41,6 +41,12 @@ usort($filtered_entries, function($a, $b) {
         </h1>
 
         <div class="flex gap-2 w-full md:w-auto">
+            <a href="index.php?page=questions" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-colors">
+                <i data-lucide="help-circle" class="w-4 h-4"></i> Kérdések
+            </a>
+            <a href="index.php?page=habits" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-colors">
+                <i data-lucide="activity" class="w-4 h-4"></i> Szokások
+            </a>
             <a href="index.php?page=editor" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors">
                 <i data-lucide="plus" class="w-4 h-4"></i> Új Bejegyzés
             </a>
